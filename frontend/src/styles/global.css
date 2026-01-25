@@ -1,0 +1,148 @@
+/* ===== RESET ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ===== HEALTHCARE THEME ===== */
+:root {
+  --primary: #2b7cff;        /* medical blue */
+  --primary-light: #eaf2ff;
+  --accent: #14b8a6;         /* teal */
+  --danger: #dc2626;
+
+  --bg: #f8fafc;
+  --card-bg: #ffffff;
+  --sidebar-bg: #ffffff;
+
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+
+  --border: #e2e8f0;
+}
+
+/* ===== BASE ===== */
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg);
+  color: var(--text-main);
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ===== LAYOUT ===== */
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  width: 260px;
+  background-color: var(--sidebar-bg);
+  padding: 24px;
+  border-right: 1px solid var(--border);
+}
+
+.sidebar h2 {
+  color: var(--primary);
+  margin-bottom: 32px;
+}
+
+.sidebar a {
+  display: block;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.sidebar a.active {
+  background-color: var(--primary-light);
+  color: var(--primary);
+}
+
+/* ===== MAIN ===== */
+.main {
+  flex: 1;
+  padding: 32px;
+}
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--card-bg);
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.card-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+/* ===== BUTTONS ===== */
+.btn {
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+/* ===== FORMS ===== */
+.field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+select {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: white;
+}
+
+/* ===== QR BOX ===== */
+.qr-box {
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  text-align: center;
+  background-color: #f9fbff;
+}
+
+/* ===== TIMER ===== */
+.timer {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.timer-active {
+  background-color: #ecfeff;
+  color: #0f766e;
+}
+
+.timer-expired {
+  background-color: #fee2e2;
+  color: var(--danger);
+}
