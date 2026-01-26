@@ -8,6 +8,7 @@ import PatientDashboard from "./pages/patient/Dashboard";
 import GenerateQR from "./pages/patient/GenerateQR";
 import Emergency from "./pages/patient/Emergency";
 import Records from "./pages/patient/Records";
+import PatientDocuments from "./pages/patient/Documents";
 
 // DOCTOR
 import DoctorDashboard from "./pages/doctor/Dashboard";
@@ -26,6 +27,8 @@ export default function App() {
         <Route path="/patient/records" element={<Records />} />
         <Route path="/patient/generate-qr" element={<GenerateQR />} />
         <Route path="/patient/emergency" element={<Emergency />} />
+        <Route path="/patient/documents" element={<PatientDocuments />} />
+
 
         {/* DOCTOR */}
         <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
