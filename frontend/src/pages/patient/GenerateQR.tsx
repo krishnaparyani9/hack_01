@@ -8,14 +8,28 @@ export default function GenerateQR() {
   const [accessType, setAccessType] = useState<"view" | "write">("view");
   const [duration, setDuration] = useState(15);
   const [qrToken, setQrToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const generateQR = async () => {
-    const res = await axios.post(`${API}/api/session/create`, {
-      accessType,
-      durationMinutes: duration,
-    });
+    try {
+      setLoading(true);
 
-    setQrToken(res.data.data.token);
+      const res = await axios.post(`${API}/api/session/create`, {
+        accessType,
+        durationMinutes: duration,
+      });
+
+      const { token, sessionId } = res.data.data;
+
+      // 🔑 VERY IMPORTANT (used by Documents upload)
+      localStorage.setItem("sessionId", sessionId);
+
+      setQrToken(token);
+    } catch (err) {
+      alert("Failed to generate QR");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,6 +54,7 @@ export default function GenerateQR() {
         <label><strong>Duration (minutes)</strong></label>
         <input
           type="number"
+          min={1}
           value={duration}
           onChange={(e) => setDuration(Number(e.target.value))}
           style={{ width: "100%", margin: "8px 0 24px", padding: "12px" }}
@@ -49,8 +64,9 @@ export default function GenerateQR() {
           className="btn btn-primary"
           style={{ width: "100%" }}
           onClick={generateQR}
+          disabled={loading}
         >
-          Generate QR Code
+          {loading ? "Generating..." : "Generate QR Code"}
         </button>
       </div>
 

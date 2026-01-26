@@ -12,16 +12,39 @@ const PatientLayout = ({ children }: { children: React.ReactNode }) => {
         <h2>HealthVault</h2>
 
         <nav>
-          <Link className={isActive("/patient/dashboard")} to="/patient/dashboard">
+          <Link
+            className={isActive("/patient/dashboard")}
+            to="/patient/dashboard"
+          >
             Dashboard
           </Link>
-          <Link className={isActive("/patient/records")} to="/patient/records">
+
+          <Link
+            className={isActive("/patient/records")}
+            to="/patient/records"
+          >
             My Records
           </Link>
-          <Link className={isActive("/patient/generate-qr")} to="/patient/generate-qr">
+
+          {/* ✅ NEW: Upload Documents */}
+          <Link
+            className={isActive("/patient/documents")}
+            to="/patient/documents"
+          >
+            Upload Documents
+          </Link>
+
+          <Link
+            className={isActive("/patient/generate-qr")}
+            to="/patient/generate-qr"
+          >
             Generate QR
           </Link>
-          <Link className={isActive("/patient/emergency")} to="/patient/emergency">
+
+          <Link
+            className={isActive("/patient/emergency")}
+            to="/patient/emergency"
+          >
             Emergency Mode
           </Link>
         </nav>
