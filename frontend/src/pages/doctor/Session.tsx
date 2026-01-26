@@ -13,39 +13,39 @@ type Doc = {
 export default function DoctorSession() {
   const { sessionId } = useParams();
 
-  const [accessType, setAccessType] = useState<"view" | "write">("view");
+  const [accessType, setAccessType] =
+    useState<"view" | "write" | null>(null);
   const [documents, setDocuments] = useState<Doc[]>([]);
   const [file, setFile] = useState<File | null>(null);
-  const [activeTab, setActiveTab] = useState<"summary" | "documents">("summary");
-  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] =
+    useState<"summary" | "documents">("summary");
+  const [uploading, setUploading] = useState(false);
 
-  /* ---------------- FETCH SESSION DATA ---------------- */
-  useEffect(() => {
-    if (!sessionId) return;
+  /* ---------------- INIT ---------------- */
+// inside useEffect
+useEffect(() => {
+  if (!sessionId) return;
 
-    // accessType was already validated during scan
-    const storedAccess = localStorage.getItem("accessType");
-    if (storedAccess === "write" || storedAccess === "view") {
-      setAccessType(storedAccess);
-    }
+  const storedAccess = localStorage.getItem("doctorAccessType");
 
-    fetchDocuments();
-  }, [sessionId]);
+  if (storedAccess === "write" || storedAccess === "view") {
+    setAccessType(storedAccess);
+  }
+
+  fetchDocuments();
+}, [sessionId]);
+
 
   const fetchDocuments = async () => {
-    try {
-      const res = await axios.get(`${API}/api/documents/${sessionId}`);
-      setDocuments(res.data.data || []);
-    } catch {
-      console.error("Failed to load documents");
-    }
+    const res = await axios.get(`${API}/api/documents/${sessionId}`);
+    setDocuments(res.data.data || []);
   };
 
   /* ---------------- UPLOAD ---------------- */
   const uploadDocument = async (type: Doc["type"]) => {
     if (!file || !sessionId) return;
 
-    setLoading(true);
+    setUploading(true);
 
     const formData = new FormData();
     formData.append("file", file);
@@ -59,23 +59,25 @@ export default function DoctorSession() {
     );
 
     setFile(null);
-    setLoading(false);
+    setUploading(false);
     fetchDocuments();
   };
 
+  if (!accessType) return <p style={{ padding: 20 }}>Loading…</p>;
+
+  /* ---------------- UI ---------------- */
   return (
-    <div className="main" style={{ maxWidth: "900px", margin: "0 auto" }}>
+    <div className="main" style={{ maxWidth: 900, margin: "0 auto" }}>
       <h2>Doctor Consultation</h2>
 
       {/* ACCESS BADGE */}
       <span
         style={{
-          padding: "4px 10px",
-          borderRadius: "999px",
-          fontSize: "12px",
+          padding: "6px 12px",
+          borderRadius: 999,
+          fontSize: 12,
           fontWeight: 600,
-          background:
-            accessType === "write" ? "#dcfce7" : "#fee2e2",
+          background: accessType === "write" ? "#dcfce7" : "#fee2e2",
           color: accessType === "write" ? "#166534" : "#991b1b",
         }}
       >
@@ -83,7 +85,7 @@ export default function DoctorSession() {
       </span>
 
       {/* TABS */}
-      <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
+      <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
         <button
           className={activeTab === "summary" ? "btn btn-primary" : "btn"}
           onClick={() => setActiveTab("summary")}
@@ -103,7 +105,7 @@ export default function DoctorSession() {
         <div className="card" style={{ marginTop: 24 }}>
           <h3>AI Medical Summary</h3>
           <p style={{ color: "var(--text-muted)" }}>
-            Generate a quick overview from uploaded records.
+            Generate a quick summary from patient documents.
           </p>
           <button className="btn btn-primary" style={{ marginTop: 12 }}>
             Generate AI Summary
@@ -116,54 +118,102 @@ export default function DoctorSession() {
         <div className="card" style={{ marginTop: 24 }}>
           <h3>Shared Documents</h3>
 
-          {documents.length === 0 && (
-            <p style={{ color: "var(--text-muted)" }}>
+          {/* DOCUMENT LIST */}
+          {documents.length === 0 ? (
+            <p style={{ color: "var(--text-muted)", marginTop: 12 }}>
               No documents uploaded yet.
             </p>
+          ) : (
+            <div style={{ marginTop: 16 }}>
+              {documents.map((doc, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "12px",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 10,
+                    marginBottom: 10,
+                  }}
+                >
+                  <div>
+                    <strong>
+                      {doc.type.toUpperCase()}
+                    </strong>
+                    <span
+                      style={{
+                        marginLeft: 8,
+                        fontSize: 12,
+                        color: "#64748b",
+                      }}
+                    >
+                      • uploaded by {doc.uploadedBy}
+                    </span>
+                  </div>
+
+                  <a
+                    href={doc.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn"
+                  >
+                    View
+                  </a>
+                </div>
+              ))}
+            </div>
           )}
 
-          <ul style={{ marginTop: 16 }}>
-            {documents.map((doc, i) => (
-              <li
-                key={i}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: 10,
-                }}
-              >
-                <a href={doc.url} target="_blank" rel="noreferrer">
-                  {doc.type.toUpperCase()}
-                </a>
-                <span style={{ fontSize: 12, color: "#64748b" }}>
-                  uploaded by {doc.uploadedBy}
-                </span>
-              </li>
-            ))}
-          </ul>
-
-          {/* UPLOAD (WRITE ONLY) */}
+          {/* UPLOAD SECTION (WRITE ONLY) */}
           {accessType === "write" && (
-            <div style={{ marginTop: 24 }}>
+            <div
+              style={{
+                marginTop: 24,
+                paddingTop: 20,
+                borderTop: "1px dashed #e5e7eb",
+              }}
+            >
+              <h4>Upload Document</h4>
+
               <input
                 type="file"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                onChange={(e) =>
+                  setFile(e.target.files?.[0] || null)
+                }
+                style={{ marginTop: 8 }}
               />
 
+              {file && (
+                <p style={{ fontSize: 12, marginTop: 6 }}>
+                  Selected: {file.name}
+                </p>
+              )}
+
               <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-                <button onClick={() => uploadDocument("prescription")}>
+                <button
+                  disabled={!file || uploading}
+                  onClick={() => uploadDocument("prescription")}
+                >
                   Prescription
                 </button>
-                <button onClick={() => uploadDocument("lab")}>
-                  Lab Report
+                <button
+                  disabled={!file || uploading}
+                  onClick={() => uploadDocument("lab")}
+                >
+                  Lab
                 </button>
-                <button onClick={() => uploadDocument("scan")}>
+                <button
+                  disabled={!file || uploading}
+                  onClick={() => uploadDocument("scan")}
+                >
                   Scan
                 </button>
               </div>
 
-              {loading && (
-                <p style={{ marginTop: 8, fontSize: 12 }}>
+              {uploading && (
+                <p style={{ fontSize: 12, marginTop: 8 }}>
                   Uploading…
                 </p>
               )}

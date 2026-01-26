@@ -10,9 +10,6 @@ export default function ScanQR() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // ⛔ prevent double mount (React strict mode / refresh)
-    if (scannerRef.current) return;
-
     const scanner = new Html5QrcodeScanner(
       "qr-reader",
       { fps: 10, qrbox: 250 },
@@ -28,89 +25,45 @@ export default function ScanQR() {
 
           const { sessionId, accessType } = res.data.data;
 
-          // ✅ store access type for doctor session
+          // ✅ SINGLE SOURCE OF TRUTH
           localStorage.setItem("doctorAccessType", accessType);
 
-          // ✅ stop scanner safely
           await scanner.clear();
-          scannerRef.current = null;
 
-          // ✅ redirect
           navigate(`/doctor/session/${sessionId}`);
-        } catch (err) {
-          console.error(err);
+        } catch {
           alert("Invalid or expired QR");
         }
       },
-      () => {
-        // required error callback (keep silent)
-      }
+      () => {}
     );
 
     scannerRef.current = scanner;
 
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => {});
-        scannerRef.current = null;
-      }
+      scanner.clear().catch(() => {});
     };
   }, [navigate]);
 
   return (
-    <div
-      className="main"
-      style={{
-        maxWidth: "720px",
-        margin: "0 auto",
-      }}
-    >
-      {/* HEADER */}
+    <div className="main" style={{ maxWidth: 720, margin: "0 auto" }}>
       <h2>Doctor QR Scan</h2>
-      <p
-        style={{
-          color: "var(--text-muted)",
-          marginBottom: "28px",
-        }}
-      >
-        Scan the patient’s QR code to begin a secure consultation.
+      <p style={{ color: "var(--text-muted)", marginBottom: 28 }}>
+        Scan the patient’s QR code to begin consultation.
       </p>
 
-      {/* SCANNER CARD */}
-      <div
-        className="card"
-        style={{
-          textAlign: "center",
-          padding: "28px",
-        }}
-      >
-        <p
-          style={{
-            fontWeight: 500,
-            marginBottom: "16px",
-          }}
-        >
+      <div className="card" style={{ textAlign: "center", padding: 28 }}>
+        <p style={{ fontWeight: 500, marginBottom: 16 }}>
           Align the QR code inside the frame
         </p>
 
-        <div
-          id="qr-reader"
-          style={{
-            width: "280px",
-            margin: "0 auto",
-          }}
-        />
+        <div id="qr-reader" style={{ width: 280, margin: "0 auto" }} />
 
-        <p
-          style={{
-            marginTop: "16px",
-            fontSize: "13px",
-            color: "var(--text-muted)",
-          }}
-        >
-          Camera access is required
+        <p style={{ marginTop: 16, fontSize: 13, color: "var(--text-muted)" }}>
+          Camera access required
         </p>
       </div>
     </div>
   );
 }
+
