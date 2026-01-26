@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import cloudinary from "../config/cloudinary";
-import { addDocument, getDocuments } from "../utils/documentStore";
+import Document from "../models/document.model";
 
 export const uploadDocumentController = (
   req: Request,
@@ -8,23 +8,21 @@ export const uploadDocumentController = (
 ) => {
   const sessionId = req.params.sessionId as string;
 
-  if (!sessionId) {
-    return res.status(400).json({ message: "Session ID required" });
-  }
-
-  if (!req.file || !req.file.buffer) {
-    return res.status(400).json({ message: "File buffer missing" });
+  if (!sessionId || !req.file?.buffer) {
+    return res.status(400).json({ message: "Invalid request" });
   }
 
   const stream = cloudinary.uploader.upload_stream(
     { resource_type: "auto" },
-    (error, result) => {
+    async (error, result) => {
       if (error || !result) {
-        console.error("Cloudinary error:", error);
         return res.status(500).json({ message: "Upload failed" });
       }
 
-      addDocument(sessionId, result.secure_url);
+      await Document.create({
+        sessionId,
+        url: result.secure_url,
+      });
 
       return res.status(201).json({
         message: "Document uploaded",
@@ -36,15 +34,18 @@ export const uploadDocumentController = (
   stream.end(req.file.buffer);
 };
 
-export const getDocumentsController = (req: Request, res: Response) => {
+export const getDocumentsController = async (
+  req: Request,
+  res: Response
+) => {
   const sessionId = req.params.sessionId as string;
 
-  if (!sessionId) {
-    return res.status(400).json({ message: "Session ID required" });
-  }
+  const docs = await Document.find({ sessionId }).sort({
+    createdAt: -1,
+  });
 
   return res.status(200).json({
     message: "Documents fetched",
-    data: getDocuments(sessionId),
+    data: docs.map((d) => d.url),
   });
 };

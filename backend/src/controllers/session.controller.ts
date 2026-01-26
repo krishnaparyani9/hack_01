@@ -1,11 +1,7 @@
 import { Request, Response } from "express";
 import { createSession } from "../services/session.service";
 import { verifySessionToken } from "../utils/jwt";
-import { sessions } from "../utils/sessionStore";
 
-/**
- * Create QR session (Patient)
- */
 export const createSessionController = (req: Request, res: Response) => {
   const { accessType, durationMinutes } = req.body;
 
@@ -26,9 +22,6 @@ export const createSessionController = (req: Request, res: Response) => {
   });
 };
 
-/**
- * Doctor validates QR token
- */
 export const validateSessionController = (req: Request, res: Response) => {
   const { token } = req.body;
 
@@ -53,40 +46,4 @@ export const validateSessionController = (req: Request, res: Response) => {
       message: "Invalid or expired session",
     });
   }
-};
-
-/**
- * Get active session details (Doctor Session Page)
- */
-export const getSessionDetailsController = (
-  req: Request,
-  res: Response
-) => {
-  // ✅ FIX: Explicit cast to string
-  const sessionId = req.params.sessionId as string;
-
-  const session = sessions.get(sessionId);
-
-  if (!session) {
-    return res.status(404).json({
-      message: "Session not found",
-    });
-  }
-
-  // Expiry check
-  if (new Date(session.expiresAt).getTime() < Date.now()) {
-    sessions.delete(sessionId);
-    return res.status(410).json({
-      message: "Session expired",
-    });
-  }
-
-  return res.status(200).json({
-    message: "Session active",
-    data: {
-      sessionId: session.sessionId,
-      accessType: session.accessType,
-      expiresAt: session.expiresAt,
-    },
-  });
 };
