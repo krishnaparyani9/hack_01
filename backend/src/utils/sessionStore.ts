@@ -1,11 +1,21 @@
-// backend/src/utils/sessionStore.ts
-
-export interface SessionData {
+type Session = {
   sessionId: string;
   accessType: "view" | "write";
-  expiresAt: Date;
-  patientId?: string; // optional for now
-}
+  expiresAt: number;
+};
 
-// In-memory session store (hackathon-safe)
-export const sessions = new Map<string, SessionData>();
+const sessions = new Map<string, Session>();
+
+export const saveSession = (session: Session) => {
+  sessions.set(session.sessionId, session);
+};
+
+export const getSession = (sessionId: string) => {
+  return sessions.get(sessionId);
+};
+
+export const isSessionValid = (sessionId: string) => {
+  const session = sessions.get(sessionId);
+  if (!session) return false;
+  return Date.now() < session.expiresAt;
+};

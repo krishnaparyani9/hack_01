@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Html5QrcodeScanner } from "html5-qrcode";
 
@@ -6,9 +7,12 @@ const API = "http://localhost:5000";
 
 export default function ScanQR() {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
-  const [accessType, setAccessType] = useState<"view" | "write" | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    // ⛔ prevent double mount (React strict mode / refresh)
+    if (scannerRef.current) return;
+
     const scanner = new Html5QrcodeScanner(
       "qr-reader",
       { fps: 10, qrbox: 250 },
@@ -22,21 +26,36 @@ export default function ScanQR() {
             token: decodedText,
           });
 
-          setAccessType(res.data.data.accessType);
-          scanner.clear();
-        } catch {
+          const { sessionId, accessType } = res.data.data;
+
+          // ✅ store access type for doctor session
+          localStorage.setItem("doctorAccessType", accessType);
+
+          // ✅ stop scanner safely
+          await scanner.clear();
+          scannerRef.current = null;
+
+          // ✅ redirect
+          navigate(`/doctor/session/${sessionId}`);
+        } catch (err) {
+          console.error(err);
           alert("Invalid or expired QR");
         }
       },
-      () => {}
+      () => {
+        // required error callback (keep silent)
+      }
     );
 
     scannerRef.current = scanner;
 
     return () => {
-      scanner.clear().catch(() => {});
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(() => {});
+        scannerRef.current = null;
+      }
     };
-  }, []);
+  }, [navigate]);
 
   return (
     <div
@@ -58,101 +77,40 @@ export default function ScanQR() {
       </p>
 
       {/* SCANNER CARD */}
-      {!accessType && (
-        <div
-          className="card"
+      <div
+        className="card"
+        style={{
+          textAlign: "center",
+          padding: "28px",
+        }}
+      >
+        <p
           style={{
-            textAlign: "center",
-            padding: "28px",
+            fontWeight: 500,
+            marginBottom: "16px",
           }}
         >
-          <p
-            style={{
-              fontWeight: 500,
-              marginBottom: "16px",
-            }}
-          >
-            Align the QR code inside the frame
-          </p>
+          Align the QR code inside the frame
+        </p>
 
-          <div
-            id="qr-reader"
-            style={{
-              width: "280px",
-              margin: "0 auto",
-            }}
-          />
+        <div
+          id="qr-reader"
+          style={{
+            width: "280px",
+            margin: "0 auto",
+          }}
+        />
 
-          <p
-            style={{
-              marginTop: "16px",
-              fontSize: "13px",
-              color: "var(--text-muted)",
-            }}
-          >
-            Camera access is required
-          </p>
-        </div>
-      )}
-
-      {/* SESSION UI */}
-      {accessType && (
-        <div className="card">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "14px",
-            }}
-          >
-            <h3>Consultation Active</h3>
-
-            <span
-              style={{
-                padding: "6px 12px",
-                borderRadius: "999px",
-                fontSize: "12px",
-                fontWeight: 700,
-                backgroundColor:
-                  accessType === "write" ? "#ecfdf5" : "#fef2f2",
-                color:
-                  accessType === "write" ? "#047857" : "#b91c1c",
-                textTransform: "uppercase",
-              }}
-            >
-              {accessType}
-            </span>
-          </div>
-
-          <textarea
-            placeholder="Doctor notes"
-            disabled={accessType === "view"}
-            style={{
-              width: "100%",
-              height: "150px",
-              padding: "14px",
-              borderRadius: "10px",
-              border: "1px solid #e5e7eb",
-              resize: "none",
-              backgroundColor:
-                accessType === "view" ? "#f8fafc" : "#ffffff",
-            }}
-          />
-
-          {accessType === "view" && (
-            <p
-              style={{
-                color: "var(--danger)",
-                marginTop: "10px",
-                fontSize: "14px",
-              }}
-            >
-              Write access is disabled for this session
-            </p>
-          )}
-        </div>
-      )}
+        <p
+          style={{
+            marginTop: "16px",
+            fontSize: "13px",
+            color: "var(--text-muted)",
+          }}
+        >
+          Camera access is required
+        </p>
+      </div>
     </div>
   );
 }

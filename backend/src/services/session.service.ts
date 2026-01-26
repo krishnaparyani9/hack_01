@@ -1,14 +1,20 @@
 import { randomUUID } from "crypto";
 import { CreateSessionPayload } from "../types/session.types";
 import { generateSessionToken } from "../utils/jwt";
-import { sessions } from "../utils/sessionStore"; // ✅ ADD
+import { saveSession } from "../utils/sessionStore";
 
 export const createSession = (payload: CreateSessionPayload) => {
   const sessionId = randomUUID();
-
-  // your logic (unchanged)
   const expiresInSeconds = payload.durationMinutes * 60;
 
+  // ✅ store session server-side
+  saveSession({
+    sessionId,
+    accessType: payload.accessType,
+    expiresAt: Date.now() + expiresInSeconds * 1000,
+  });
+
+  // ✅ FIXED: include accessType
   const token = generateSessionToken(
     {
       sessionId,
@@ -16,15 +22,6 @@ export const createSession = (payload: CreateSessionPayload) => {
     },
     expiresInSeconds
   );
-
-  // ✅ NEW (store session, does NOT change logic)
-  const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
-
-  sessions.set(sessionId, {
-    sessionId,
-    accessType: payload.accessType,
-    expiresAt,
-  });
 
   return {
     sessionId,
