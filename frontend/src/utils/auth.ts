@@ -7,6 +7,18 @@ export const saveAuth = (token: string, user: any) => {
   localStorage.setItem("userEmail", user.email);
   localStorage.setItem("userRole", user.role);
   axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+  // If the authenticated user is a patient, ensure their persistent patientId is set to their user id
+  // so documents uploaded under their account remain available across sign-outs.
+  if ((user.role as string) === "patient") {
+    try {
+      localStorage.setItem("patientId", user.id);
+      if (user.name) localStorage.setItem("patientName", user.name);
+      if (user.email) localStorage.setItem("patientEmail", user.email);
+    } catch (e) {
+      // ignore storage errors
+    }
+  }
 };
 
 export const clearAuth = () => {
