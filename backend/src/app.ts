@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 
 import sessionRoutes from "./routes/session.routes";
 import documentRoutes from "./routes/document.routes";
+import patientRoutes from "./routes/patient.routes";
 
 dotenv.config();
 
@@ -15,7 +16,9 @@ app.use(express.json());
 
 /* ---------- ROUTES ---------- */
 app.use("/api/session", sessionRoutes);
+app.use("/api/auth", require("./routes/auth.routes").default);
 app.use("/api/documents", documentRoutes);
+app.use("/api/patients", patientRoutes);
 
 /* ---------- HEALTH CHECK ---------- */
 app.get("/health", (_req, res) => {

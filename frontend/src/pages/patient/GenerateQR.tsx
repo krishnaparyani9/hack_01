@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-import { QRCodeCanvas } from "qrcode.react";
+import QrModal from "../../components/QrModal";
 
 const API = "http://localhost:5000";
 
@@ -9,14 +9,25 @@ export default function GenerateQR() {
   const [duration, setDuration] = useState(15);
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
 
   const generateQR = async () => {
     try {
       setLoading(true);
 
+      // ensure a persistent patientId exists
+      let patientId = localStorage.getItem("patientId");
+      if (!patientId) {
+        // modern browsers support crypto.randomUUID(); fallback to timestamp+random
+        const newPatientId = (window.crypto as any)?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+        localStorage.setItem("patientId", newPatientId);
+        patientId = newPatientId;
+      }
+
       const res = await axios.post(`${API}/api/session/create`, {
         accessType,
         durationMinutes: duration,
+        patientId,
       });
 
       const { token, sessionId } = res.data.data;
@@ -25,6 +36,7 @@ export default function GenerateQR() {
       localStorage.setItem("sessionId", sessionId);
 
       setQrToken(token);
+      setShowQrModal(true);
     } catch (err) {
       alert("Failed to generate QR");
     } finally {
@@ -85,13 +97,7 @@ export default function GenerateQR() {
           </p>
 
           <div style={{ marginTop: "20px" }}>
-            <QRCodeCanvas
-              value={qrToken}
-              size={220}
-              bgColor="#ffffff"
-              fgColor="#0f172a"
-              level="H"
-            />
+            <button className="btn btn-secondary" onClick={() => setShowQrModal(true)}>Open QR in modal</button>
           </div>
 
           <p
@@ -105,6 +111,8 @@ export default function GenerateQR() {
           </p>
         </div>
       )}
+
+      {showQrModal && qrToken && <QrModal token={qrToken} onClose={() => setShowQrModal(false)} />}
     </div>
   );
 }
