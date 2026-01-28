@@ -4,6 +4,7 @@ import {
   validateSessionController,
   getSessionController,
 } from "../controllers/session.controller";
+import { authMiddleware, requireRole } from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -13,9 +14,9 @@ const router = Router();
 router.post("/create", createSessionController);
 
 /**
- * Doctor validates QR
+ * Doctor validates QR (doctors only)
  */
-router.post("/validate", validateSessionController);
+router.post("/validate", authMiddleware, requireRole("doctor"), validateSessionController);
 
 /**
  * Get session info (accessType / patientId)

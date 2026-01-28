@@ -41,8 +41,8 @@ export default function Records() {
   if (!patientId) {
     return (
       <div className="card">
-        <h3>No Records Found</h3>
-        <p>Generate a QR and upload documents first.</p>
+        <h3>Sign In Required</h3>
+        <p>Please sign in as a patient to view your records.</p>
       </div>
     );
   }

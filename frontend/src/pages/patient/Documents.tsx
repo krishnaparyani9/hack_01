@@ -24,9 +24,18 @@ export default function Documents() {
     (async () => {
       let pid = patientId;
       if (!pid) {
-        pid = (window.crypto as any)?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-        localStorage.setItem("patientId", pid);
-        setPatientId(pid);
+        const userId = localStorage.getItem("userId");
+        const userRole = localStorage.getItem("userRole");
+        if (userId && userRole === "patient") {
+          pid = userId;
+          localStorage.setItem("patientId", pid);
+          setPatientId(pid);
+        } else {
+          // not authenticated as patient — don't auto-create patient id
+          setPatientId("");
+          if (mounted) setDocuments([]);
+          return;
+        }
       }
 
       if (mounted) await fetchDocuments(pid);
@@ -64,12 +73,10 @@ export default function Documents() {
     // Patients should always upload with their persistent patientId — QR restrictions apply only to doctors
     if (!file) return;
 
-    let pid = patientId;
+    const pid = patientId;
     if (!pid) {
-      const newPatientId = (window.crypto as any)?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-      localStorage.setItem("patientId", newPatientId);
-      setPatientId(newPatientId);
-      pid = newPatientId;
+      alert("Please sign in as a patient to upload documents.");
+      return;
     }
 
     setLoading(true);

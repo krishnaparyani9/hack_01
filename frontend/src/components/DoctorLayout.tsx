@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import DoctorDetailsModal from "./DoctorDetailsModal";
 
 const DoctorLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     try {
       return localStorage.getItem("theme") === "dark";
@@ -11,6 +13,20 @@ const DoctorLayout = ({ children }: { children: React.ReactNode }) => {
       return false;
     }
   });
+
+  const handleSignOut = () => {
+    try {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("userName");
+      localStorage.removeItem("userEmail");
+      localStorage.removeItem("userRole");
+      window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Signed out", type: "success" } }));
+      navigate("/");
+    } catch (e) {
+      navigate("/");
+    }
+  }; 
 
   useEffect(() => {
     try {
@@ -87,7 +103,7 @@ const DoctorLayout = ({ children }: { children: React.ReactNode }) => {
             <span className="footer-label">Dark mode</span>
           </div>
 
-          <div className="footer-actions">
+          <div className="footer-actions vertical">
             <button
               className={`theme-toggle btn-icon ${darkMode ? "dark" : "light"}`}
               title="Toggle theme"
@@ -103,8 +119,10 @@ const DoctorLayout = ({ children }: { children: React.ReactNode }) => {
                 <path d="M21 12.8A9 9 0 1111.2 3 7 7 0 0021 12.8z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
+
+            <button className="btn btn-outline" onClick={handleSignOut}>Sign Out</button>
           </div>
-        </div>
+        </div>  
       </aside>
 
       <main className="main">{children}</main>

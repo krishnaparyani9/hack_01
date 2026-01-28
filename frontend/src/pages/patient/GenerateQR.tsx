@@ -15,15 +15,14 @@ export default function GenerateQR() {
     try {
       setLoading(true);
 
-      // ensure a persistent patientId exists
-      let patientId = localStorage.getItem("patientId");
-      if (!patientId) {
-        // modern browsers support crypto.randomUUID(); fallback to timestamp+random
-        const newPatientId = (window.crypto as any)?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-        localStorage.setItem("patientId", newPatientId);
-        patientId = newPatientId;
+      const userId = localStorage.getItem("userId");
+      const userRole = localStorage.getItem("userRole");
+      if (!userId || userRole !== "patient") {
+        window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Please sign in as a patient to generate a QR", type: "error" } }));
+        return;
       }
 
+      const patientId = userId;
       const res = await axios.post(`${API}/api/session/create`, {
         accessType,
         durationMinutes: duration,
