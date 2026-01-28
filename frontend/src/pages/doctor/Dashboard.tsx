@@ -1,9 +1,46 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 const DoctorDashboard = () => {
   const navigate = useNavigate();
 
-  const hasActiveSession = true; // mock (later from backend)
+  const [activeSession, setActiveSession] = useState<null | {
+    sessionId: string;
+    accessType: "view" | "write";
+    patientId?: string;
+    createdAt?: number;
+    expiresAt?: number;
+    durationMinutes?: number;
+  }>(null);
+
+  useEffect(() => {
+    const sid = localStorage.getItem("doctorActiveSessionId");
+    if (!sid) return;
+
+    (async () => {
+      try {
+        const res = await fetch(`http://localhost:5000/api/session/${sid}`);
+        const json = await res.json();
+        if (json && json.data) setActiveSession(json.data);
+      } catch {
+        setActiveSession(null);
+      }
+    })();
+  }, []);
+
+  const hasActiveSession = !!activeSession;
+
+  const formatTimeLeft = (expiresAt?: number) => {
+    if (!expiresAt) return "";
+    const diff = Math.max(0, expiresAt - Date.now());
+    const mins = Math.ceil(diff / 60000);
+    return mins > 1 ? `~${mins} min` : mins === 1 ? `~1 min` : "Expired";
+  };
+
+  const formatStarted = (createdAt?: number) => {
+    if (!createdAt) return "Just now";
+    return new Date(createdAt).toLocaleString();
+  };
 
   return (
     <div
@@ -19,63 +56,22 @@ const DoctorDashboard = () => {
       </p>
 
       {/* ACTIVE SESSION */}
-      {hasActiveSession && (
-        <div
-          className="card"
-          style={{
-            marginBottom: "36px",
-            borderLeft: "5px solid var(--primary)",
-          }}
-        >
-          {/* Header */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "16px",
-            }}
-          >
+      {hasActiveSession && activeSession && (
+        <div className="card" style={{ marginBottom: "36px", borderLeft: "5px solid var(--primary)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <h3>Active Consultation</h3>
-
-            <span
-              style={{
-                padding: "4px 10px",
-                borderRadius: "999px",
-                fontSize: "12px",
-                fontWeight: 600,
-                backgroundColor: "#ecfeff",
-                color: "#0f766e",
-              }}
-            >
-              ACTIVE
-            </span>
+            <span className="doc-badge" style={{ background: "#ecfeff", color: "#064e3b" }}>ACTIVE</span>
           </div>
 
-          {/* Details */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              rowGap: "10px",
-              columnGap: "20px",
-              marginBottom: "20px",
-            }}
-          >
-            <p><strong>Patient:</strong> Anonymous</p>
-            <p><strong>Access:</strong> View + Write</p>
-            <p><strong>Started:</strong> Just now</p>
-            <p><strong>Time Left:</strong> ~14 min</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
+            <div><strong>Patient</strong><div className="muted">{activeSession.patientId || "Anonymous"}</div></div>
+            <div><strong>Access</strong><div className="muted">{activeSession.accessType === "write" ? "View + Write" : "View"}</div></div>
+            <div><strong>Started</strong><div className="muted">{formatStarted(activeSession.createdAt)}</div></div>
+            <div><strong>Time Left</strong><div className="muted">{formatTimeLeft(activeSession.expiresAt)}</div></div>
           </div>
 
-          {/* Action */}
-          <Link to="/doctor/session">
-            <button
-              className="btn btn-primary"
-              style={{ width: "100%" }}
-            >
-              Continue Consultation
-            </button>
+          <Link to={`/doctor/session/${activeSession.sessionId}`}>
+            <button className="btn btn-primary" style={{ width: "100%" }}>Continue Consultation</button>
           </Link>
         </div>
       )}

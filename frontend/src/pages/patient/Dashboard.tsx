@@ -16,6 +16,8 @@ const Dashboard = () => {
           <Link to="/patient/records">View Records →</Link>
         </div>
 
+
+
         <div className="card">
           <h3>🔐 QR Access</h3>
           <p>Share records securely</p>

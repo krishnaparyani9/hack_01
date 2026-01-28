@@ -2,6 +2,10 @@ type Session = {
   sessionId: string;
   accessType: "view" | "write";
   expiresAt: number;
+  createdAt?: number;
+  durationMinutes?: number;
+  // persistent patient id (optional)
+  patientId?: string;
 };
 
 const sessions = new Map<string, Session>();

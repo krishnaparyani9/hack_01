@@ -1,22 +1,44 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import DocumentModal from "../../components/DocumentModal";
 
 const API = "http://localhost:5000";
 
+type DocType = "Prescription" | "Lab Report" | "Scan" | "Other";
+
+type DocumentItem = { id: string; url: string; type: DocType; uploadedByName?: string; uploadedByRole?: string; createdAt?: string };
+
 export default function Records() {
-  const [documents, setDocuments] = useState<string[]>([]);
-  const sessionId = localStorage.getItem("sessionId");
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [activeDoc, setActiveDoc] = useState<DocumentItem | null>(null);
+  const patientId = localStorage.getItem("patientId");
 
   useEffect(() => {
-    if (sessionId) fetchDocuments();
-  }, [sessionId]);
+    if (patientId) fetchDocuments();
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") fetchDocuments();
+    };
+
+    const onFocus = () => fetchDocuments();
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onFocus);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId]);
 
   const fetchDocuments = async () => {
-    const res = await axios.get(`${API}/api/documents/${sessionId}`);
+    if (!patientId) return;
+    const res = await axios.get(`${API}/api/documents/patient/${patientId}`);
     setDocuments(res.data.data || []);
   };
 
-  if (!sessionId) {
+  if (!patientId) {
     return (
       <div className="card">
         <h3>No Records Found</h3>
@@ -39,14 +61,12 @@ export default function Records() {
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-            {documents.map((url, index) => {
-              const safeUrl = url.startsWith("http")
-                ? url
-                : `https://${url}`;
+            {documents.map((doc, index) => {
+              const safeUrl = doc.url.startsWith("http") ? doc.url : `https://${doc.url}`;
 
               return (
                 <div
-                  key={index}
+                  key={doc.id || index}
                   style={{
                     padding: "16px",
                     border: "1px solid #e5e7eb",
@@ -59,28 +79,35 @@ export default function Records() {
                   <div>
                     <strong>Medical Record {index + 1}</strong>
                     <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                      Secure cloud document
+                      {doc.type} • {doc.uploadedByName ? `Uploaded by ${doc.uploadedByName}` : "Uploaded"} {doc.createdAt ? `• ${new Date(doc.createdAt).toLocaleString()}` : ""} • Secure cloud document
                     </p>
                   </div>
 
-                  <a
-                    href={safeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn"
-                    style={{
-                      background: "#f8fafc",
-                      fontWeight: 600,
-                    }}
-                  >
-                    Open
-                  </a>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setActiveDoc({ id: doc.id, url: safeUrl, type: doc.type, uploadedByName: doc.uploadedByName, uploadedByRole: doc.uploadedByRole, createdAt: doc.createdAt })}
+                    >
+                      View
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {activeDoc && (
+        <DocumentModal
+          url={activeDoc.url}
+          title={`Record — ${activeDoc.type}`}
+          uploadedByName={activeDoc.uploadedByName}
+          uploadedByRole={activeDoc.uploadedByRole}
+          createdAt={activeDoc.createdAt}
+          onClose={() => setActiveDoc(null)}
+        />
+      )}
     </div>
   );
 }
