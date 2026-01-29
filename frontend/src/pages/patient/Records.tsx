@@ -11,10 +11,43 @@ type DocumentItem = { id: string; url: string; type: DocType; uploadedByName?: s
 export default function Records() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [activeDoc, setActiveDoc] = useState<DocumentItem | null>(null);
-  const patientId = localStorage.getItem("patientId");
+  const [patientId, setPatientId] = useState<string>(() => localStorage.getItem("patientId") || "");
 
   useEffect(() => {
-    if (patientId) fetchDocuments();
+    let mounted = true;
+
+    (async () => {
+      let pid = patientId;
+      // If a sessionId exists (QR session created), prefer the session's patientId
+      try {
+        const sessionId = localStorage.getItem("sessionId");
+        if (sessionId) {
+          const sessRes = await axios.get(`${API}/api/session/${sessionId}`);
+          const sessPid = sessRes.data?.data?.patientId;
+          if (sessPid) {
+            pid = sessPid;
+            localStorage.setItem("patientId", pid);
+            setPatientId(pid);
+          }
+        }
+      } catch (e) {
+        // ignore session lookup failures
+      }
+      if (!pid) {
+        const userId = localStorage.getItem("userId");
+        if (userId) {
+          pid = userId;
+          localStorage.setItem("patientId", pid);
+          setPatientId(pid);
+        } else {
+          setPatientId("");
+          if (mounted) setDocuments([]);
+          return;
+        }
+      }
+
+      if (mounted) await fetchDocuments(pid);
+    })();
 
     const onVisibility = () => {
       if (document.visibilityState === "visible") fetchDocuments();
@@ -26,16 +59,29 @@ export default function Records() {
     window.addEventListener("focus", onFocus);
 
     return () => {
+      mounted = false;
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("focus", onFocus);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
 
-  const fetchDocuments = async () => {
-    if (!patientId) return;
-    const res = await axios.get(`${API}/api/documents/patient/${patientId}`);
-    setDocuments(res.data.data || []);
+  const fetchDocuments = async (pid?: string) => {
+    const id = pid || patientId;
+    if (!id) {
+      setDocuments([]);
+      return;
+    }
+
+    try {
+      console.log("Fetching records for patientId:", id);
+      const res = await axios.get(`${API}/api/documents/patient/${id}`);
+      setDocuments(res.data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch records:", err);
+      window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Failed to load records", type: "error" } }));
+      setDocuments([]);
+    }
   };
 
   if (!patientId) {
@@ -50,8 +96,11 @@ export default function Records() {
   return (
     <div className="main" style={{ maxWidth: "760px", margin: "0 auto" }}>
       <h2>My Records</h2>
-      <p style={{ color: "var(--text-muted)", marginBottom: "24px" }}>
-        All documents linked to your current session.
+      <p style={{ color: "var(--text-muted)", marginBottom: "8px" }}>
+        All documents linked to your account.
+      </p>
+      <p style={{ color: "var(--text-muted)", marginBottom: "16px", fontSize: 12 }}>
+        Viewing patientId: {patientId || "(none)"}
       </p>
 
       <div className="card">
@@ -60,7 +109,7 @@ export default function Records() {
             No records available yet.
           </p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div className="scroll-list" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
             {documents.map((doc, index) => {
               const safeUrl = doc.url.startsWith("http") ? doc.url : `https://${doc.url}`;
 

@@ -2,16 +2,18 @@ import { Router } from "express";
 import {
   uploadDocumentController,
   uploadDocumentByPatientController,
-  createMockDocumentController,
   getDocumentsController,
   getDocumentsByPatientController,
+  deleteDocumentController
 } from "../controllers/document.controller";
 import { upload } from "../middleware/upload";
-import { authMiddleware } from "../middleware/auth.middleware";
+import { authMiddleware, requireAuth } from "../middleware/auth.middleware";
 
 const router = Router();
 
-// Upload directly for patient owner (no QR required) — allow auth info when present
+/**
+ * Upload document directly by patient (no QR)
+ */
 router.post(
   "/upload/by-patient",
   authMiddleware,
@@ -19,19 +21,29 @@ router.post(
   uploadDocumentByPatientController
 );
 
-// Upload via QR session — auth info (doctor) may be present and will be used
+/**
+ * Fetch documents by patientId (⚠️ MUST COME BEFORE :sessionId)
+ */
+router.get(
+  "/patient/:patientId",
+  authMiddleware,
+  getDocumentsByPatientController
+);
+
+/**
+ * Upload document via QR session (doctor)
+ */
 router.post(
   "/upload/:sessionId",
   authMiddleware,
-  upload.single("file"), // 🔴 MUST BE "file"
+  upload.single("file"),
   uploadDocumentController
 );
 
+/**
+ * Fetch documents via QR session
+ */
 router.get("/:sessionId", getDocumentsController);
-// New: fetch documents by persistent patientId
-router.get("/patient/:patientId", getDocumentsByPatientController);
-
-// Testing helper: create a mock document without going through Cloudinary
-router.post("/mock", authMiddleware, createMockDocumentController);
-
+// Delete a document (patient only)
+router.delete('/:id', authMiddleware, requireAuth, deleteDocumentController);
 export default router;

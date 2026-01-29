@@ -173,7 +173,7 @@ export default function DoctorSession() {
             </p>
           )}
 
-          <div style={{ marginTop: 16 }}>
+          <div className="scroll-list" style={{ marginTop: 16 }}>
             {documents.map((doc, i) => (
               <div
                 key={doc.id || i}

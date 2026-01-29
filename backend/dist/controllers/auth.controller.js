@@ -12,9 +12,15 @@ const jwt_1 = require("../utils/jwt");
 const isValidRole = (r) => r === "patient" || r === "doctor";
 const signupController = async (req, res) => {
     try {
-        const { name, email, password, role, guestPatientId } = req.body;
+        const { name, email, password, role, guestPatientId, licenseNumber, clinicName } = req.body;
         if (!name || !email || !password || !role) {
             return res.status(400).json({ message: "name, email, password and role are required" });
+        }
+        // if signing up as a doctor, require a license number for verification
+        if (role === "doctor") {
+            if (!licenseNumber || String(licenseNumber).trim().length < 3) {
+                return res.status(400).json({ message: "Doctors must provide a valid license number" });
+            }
         }
         const normalizedEmail = String(email).trim().toLowerCase();
         const normalizedName = String(name).trim();
@@ -32,7 +38,7 @@ const signupController = async (req, res) => {
         if (existing)
             return res.status(409).json({ message: "Email already in use" });
         const hash = await bcryptjs_1.default.hash(password, 10);
-        const user = await user_model_1.default.create({ name: normalizedName, email: normalizedEmail, passwordHash: hash, role });
+        const user = await user_model_1.default.create({ name: normalizedName, email: normalizedEmail, passwordHash: hash, role, licenseNumber: role === "doctor" ? String(licenseNumber).trim() : undefined, clinicName: role === "doctor" ? (clinicName ? String(clinicName).trim() : undefined) : undefined });
         // Ensure a patient record exists for patient accounts (prevents 404s when frontend fetches patient data)
         try {
             if (role === "patient") {

@@ -5,9 +5,11 @@ import { verifySessionToken } from "../utils/jwt";
 export const createSessionController = (req: Request, res: Response) => {
   const { accessType, durationMinutes, patientId } = req.body;
 
-  if (!accessType || !durationMinutes) {
+  // Require a patientId to ensure sessions are always tied to a patient.
+  // This prevents documents uploaded during a session from being orphaned.
+  if (!accessType || !durationMinutes || !patientId) {
     return res.status(400).json({
-      message: "accessType and durationMinutes are required",
+      message: "accessType, durationMinutes and patientId are required",
     });
   }
 

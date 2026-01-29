@@ -59,8 +59,9 @@ export const signupController = async (req: Request, res: Response) => {
     }
 
     // If the user signed up from a device with a guest patientId, reassign documents to the new user id
+    // Only perform this merge for patient accounts — do NOT merge documents into doctor accounts.
     try {
-      if (guestPatientId && String(guestPatientId) !== user._id.toString()) {
+      if (user.role === "patient" && guestPatientId && String(guestPatientId) !== user._id.toString()) {
         const result = await Document.updateMany({ patientId: guestPatientId }, { patientId: user._id.toString() });
         console.log(`Merged ${result.modifiedCount ?? 0} documents from guest ${guestPatientId} -> ${user._id}`);
       }
@@ -104,8 +105,9 @@ export const loginController = async (req: Request, res: Response) => {
     }
 
     // If login provided a guestPatientId, merge docs into this user's account
+    // Only merge when the authenticating user is a patient (don't reassign to doctors)
     try {
-      if (guestPatientId && String(guestPatientId) !== user._id.toString()) {
+      if (user.role === "patient" && guestPatientId && String(guestPatientId) !== user._id.toString()) {
         const result = await Document.updateMany({ patientId: guestPatientId }, { patientId: user._id.toString() });
         console.log(`Merged ${result.modifiedCount ?? 0} documents from guest ${guestPatientId} -> ${user._id}`);
       }

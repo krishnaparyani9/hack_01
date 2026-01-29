@@ -11,16 +11,16 @@ const router = Router();
 /**
  * Patient creates QR
  */
-router.post("/create", createSessionController);
+router.post("/create", authMiddleware, requireRole("patient"), createSessionController);
 
 /**
- * Doctor validates QR (doctors only)
+ * Doctor validates QR
  */
 router.post("/validate", authMiddleware, requireRole("doctor"), validateSessionController);
 
 /**
- * Get session info (accessType / patientId)
+ * Get session info (doctor / patient)
  */
-router.get("/:sessionId", getSessionController);
+router.get("/:sessionId", authMiddleware, getSessionController);
 
 export default router;

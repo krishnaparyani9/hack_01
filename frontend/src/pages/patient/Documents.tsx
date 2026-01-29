@@ -23,15 +23,30 @@ export default function Documents() {
     let mounted = true;
     (async () => {
       let pid = patientId;
+      // If a sessionId exists (QR session created), prefer the session's patientId
+      try {
+        const sessionId = localStorage.getItem("sessionId");
+        if (sessionId) {
+          const sessRes = await axios.get(`${API}/api/session/${sessionId}`);
+          const sessPid = sessRes.data?.data?.patientId;
+          if (sessPid) {
+            pid = sessPid;
+            localStorage.setItem("patientId", pid);
+            setPatientId(pid);
+          }
+        }
+      } catch (e) {
+        // ignore session lookup failures
+      }
       if (!pid) {
+        // For hackathon convenience: fall back to any stored userId (no strict role check)
         const userId = localStorage.getItem("userId");
-        const userRole = localStorage.getItem("userRole");
-        if (userId && userRole === "patient") {
+        if (userId) {
           pid = userId;
           localStorage.setItem("patientId", pid);
           setPatientId(pid);
         } else {
-          // not authenticated as patient — don't auto-create patient id
+          // No id available — show empty list but don't block navigation
           setPatientId("");
           if (mounted) setDocuments([]);
           return;
@@ -65,18 +80,35 @@ export default function Documents() {
       return;
     }
 
-    const res = await axios.get(`${API}/api/documents/patient/${id}`);
-    setDocuments(res.data.data || []);
+    try {
+      console.log("Fetching documents for patientId:", id);
+      const res = await axios.get(`${API}/api/documents/patient/${id}`);
+      setDocuments(res.data.data || []);
+    } catch (err: unknown) {
+      console.error("Failed to fetch documents:", err);
+      window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Failed to load documents", type: "error" } }));
+      setDocuments([]);
+    }
   };
 
   const uploadDocument = async () => {
     // Patients should always upload with their persistent patientId — QR restrictions apply only to doctors
     if (!file) return;
 
-    const pid = patientId;
+    // Ensure we have a patient id — if none, generate a lightweight anonymous id so uploads are possible without auth
+    let pid = patientId;
     if (!pid) {
-      alert("Please sign in as a patient to upload documents.");
-      return;
+      const userId = localStorage.getItem("userId");
+      if (userId) {
+        pid = userId;
+        localStorage.setItem("patientId", pid);
+        setPatientId(pid);
+      } else {
+        // generate a temporary anon id for this client
+        pid = `anon-${Date.now()}`;
+        localStorage.setItem("patientId", pid);
+        setPatientId(pid);
+      }
     }
 
     setLoading(true);
@@ -102,8 +134,12 @@ export default function Documents() {
 
       setFile(null);
       fetchDocuments(pid);
-    } catch (err: any) {
-      alert(err?.response?.data?.message || "Upload failed");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        alert(err.response.data.message);
+      } else {
+        alert("Upload failed");
+      }
     } finally {
       setLoading(false);
       setProgress(0);
@@ -134,8 +170,11 @@ export default function Documents() {
   return (
     <div className="main" style={{ maxWidth: "760px", margin: "0 auto" }}>
       <h2>Medical Documents</h2>
-      <p style={{ color: "var(--text-muted)", marginBottom: "24px" }}>
+      <p style={{ color: "var(--text-muted)", marginBottom: "8px" }}>
         Upload prescriptions, lab reports, or medical scans.
+      </p>
+      <p style={{ color: "var(--text-muted)", marginBottom: "16px", fontSize: 12 }}>
+        Viewing patientId: {patientId || "(none)"}
       </p>
 
       {/* UPLOAD CARD */}
@@ -202,7 +241,7 @@ export default function Documents() {
             No documents uploaded yet.
           </p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div className="scroll-list" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
             {documents.map((doc, index) => {
               const safeUrl = doc.url.startsWith("http") ? doc.url : `https://${doc.url}`;
 
@@ -231,6 +270,26 @@ export default function Documents() {
                       onClick={() => setActiveDoc({ id: doc.id, url: safeUrl, type: doc.type, uploadedByName: doc.uploadedByName, uploadedByRole: doc.uploadedByRole, createdAt: doc.createdAt })}
                     >
                       View
+                    </button>
+
+                    <button
+                      className="btn btn-ghost"
+                      onClick={async () => {
+                        if (!confirm("Delete this document?")) return;
+                        try {
+                          await axios.delete(`${API}/api/documents/${doc.id}`);
+                          window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Document deleted", type: "success" } }));
+                          fetchDocuments();
+                        } catch (err: unknown) {
+                          if (axios.isAxiosError(err) && err.response?.data?.message) {
+                            window.dispatchEvent(new CustomEvent("toast", { detail: { message: err.response.data.message, type: "error" } }));
+                          } else {
+                            window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Delete failed", type: "error" } }));
+                          }
+                        }
+                      }}
+                    >
+                      Delete
                     </button>
                   </div>
                 </div>

@@ -10,5 +10,8 @@ const UserSchema = new Schema({
     email: { type: String, required: true, unique: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ["patient", "doctor"], required: true },
+    // Doctor-specific metadata (optional)
+    licenseNumber: { type: String },
+    clinicName: { type: String },
 }, { timestamps: true });
 exports.default = mongoose_1.default.model("User", UserSchema);

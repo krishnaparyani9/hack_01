@@ -15,14 +15,20 @@ export default function GenerateQR() {
     try {
       setLoading(true);
 
-      const userId = localStorage.getItem("userId");
-      const userRole = localStorage.getItem("userRole");
-      if (!userId || userRole !== "patient") {
+      const userId = localStorage.getItem("userId") || localStorage.getItem("patientId");
+      const userRoleRaw = localStorage.getItem("userRole");
+      const isPatient = (userRoleRaw || "").toLowerCase() === "patient" || !!localStorage.getItem("patientId");
+
+      if (!userId || !isPatient) {
         window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Please sign in as a patient to generate a QR", type: "error" } }));
         return;
       }
 
-      const patientId = userId;
+      const patientId = userId as string;
+      // Persist a stable patientId so the patient UI and sessions align
+      try {
+        localStorage.setItem("patientId", patientId);
+      } catch {}
       const res = await axios.post(`${API}/api/session/create`, {
         accessType,
         durationMinutes: duration,

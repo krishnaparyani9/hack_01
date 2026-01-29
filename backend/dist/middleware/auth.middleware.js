@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.requireAuth = exports.authMiddleware = void 0;
+exports.requireRole = exports.requireAuth = exports.authMiddleware = void 0;
 const jwt_1 = require("../utils/jwt");
 const authMiddleware = (req, res, next) => {
     const header = req.headers.authorization;
@@ -25,3 +25,13 @@ const requireAuth = (req, res, next) => {
     return res.status(401).json({ message: "Authentication required" });
 };
 exports.requireAuth = requireAuth;
+// Require a specific role for a route (e.g. doctor-only)
+const requireRole = (role) => (req, res, next) => {
+    const user = req.user;
+    if (!user)
+        return res.status(401).json({ message: "Authentication required" });
+    if (user.role !== role)
+        return res.status(403).json({ message: "Forbidden: insufficient role" });
+    return next();
+};
+exports.requireRole = requireRole;

@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import ProtectedRoute from "./components/ProtectedRoute";
 
 // AUTH
 import Login from "./pages/auth/login";
@@ -31,28 +30,29 @@ export default function App() {
         <Route path="/" element={<Login />} />
 
         {/* PATIENT */}
-        <Route path="/patient/dashboard" element={<ProtectedRoute allowedRoles={["patient"]}><PatientDashboard /></ProtectedRoute>} />
+        <Route path="/patient/dashboard" element={<PatientDashboard />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/patient/records" element={<ProtectedRoute allowedRoles={["patient"]}><Records /></ProtectedRoute>} />
-        <Route path="/patient/generate-qr" element={<ProtectedRoute allowedRoles={["patient"]}><GenerateQR /></ProtectedRoute>} />
-        <Route path="/patient/emergency" element={<ProtectedRoute allowedRoles={["patient"]}><Emergency /></ProtectedRoute>} />
-        <Route path="/patient/documents" element={<ProtectedRoute allowedRoles={["patient"]}><PatientDocuments /></ProtectedRoute>} />
+        <Route path="/patient/records" element={<Records />} />
+        <Route path="/patient/generate-qr" element={<GenerateQR />} />
+        <Route path="/patient/emergency" element={<Emergency />} />
+        <Route path="/patient/documents" element={<PatientDocuments />} />
+
 
 
         {/* DOCTOR */}
-        <Route path="/doctor/dashboard" element={<ProtectedRoute allowedRoles={["doctor"]}><DoctorLayout><DoctorDashboard /></DoctorLayout></ProtectedRoute>} />
-        <Route path="/doctor/scan" element={<ProtectedRoute allowedRoles={["doctor"]}><DoctorLayout><ScanQR /></DoctorLayout></ProtectedRoute>} />
+        <Route path="/doctor/dashboard" element={<DoctorLayout><DoctorDashboard /></DoctorLayout>} />
+        <Route path="/doctor/scan" element={<DoctorLayout><ScanQR /></DoctorLayout>} />
 
         {/* ✅ THIS WAS MISSING */}
         <Route
           path="/doctor/session/:sessionId"
-          element={<ProtectedRoute allowedRoles={["doctor"]}><DoctorLayout><DoctorSession /></DoctorLayout></ProtectedRoute>}
+          element={<DoctorLayout><DoctorSession /></DoctorLayout>} 
         />
 
         {/* Doctor upload page (clean full-page form) */}
         <Route
           path="/doctor/session/:sessionId/upload"
-          element={<ProtectedRoute allowedRoles={["doctor"]}><DoctorLayout><UploadDocument /></DoctorLayout></ProtectedRoute>}
+          element={<DoctorLayout><UploadDocument /></DoctorLayout>} 
         />
 
         {/* FALLBACK */}
