@@ -36,7 +36,7 @@ async function main() {
   }
 
   const res = await Document.updateMany({ patientId: fromId }, { patientId: toId }).exec();
-  console.log(`Modified ${res.modifiedCount ?? res.nModified ?? 0} documents.`);
+  console.log(`Modified ${res.modifiedCount ?? 0} documents.`);
 
   await mongoose.disconnect();
   process.exit(0);

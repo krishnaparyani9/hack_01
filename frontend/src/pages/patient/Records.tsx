@@ -17,7 +17,7 @@ export default function Records() {
     let mounted = true;
 
     (async () => {
-      let pid = patientId;
+      let pidForFetch = patientId; // default to stored component state
       // If a sessionId exists (QR session created), prefer the session's patientId
       try {
         const sessionId = localStorage.getItem("sessionId");
@@ -25,20 +25,26 @@ export default function Records() {
           const sessRes = await axios.get(`${API}/api/session/${sessionId}`);
           const sessPid = sessRes.data?.data?.patientId;
           if (sessPid) {
-            pid = sessPid;
-            localStorage.setItem("patientId", pid);
-            setPatientId(pid);
+            // Use session's patientId for this fetch only; do NOT overwrite
+            // global `patientId` in localStorage to avoid accidental changes.
+            pidForFetch = sessPid;
           }
         }
       } catch (e) {
         // ignore session lookup failures
       }
-      if (!pid) {
+
+      if (!pidForFetch) {
         const userId = localStorage.getItem("userId");
-        if (userId) {
-          pid = userId;
-          localStorage.setItem("patientId", pid);
-          setPatientId(pid);
+        const userRole = (localStorage.getItem("userRole") || "").toLowerCase();
+        // Only default to the signed-in user id when they're actually a patient
+        if (userId && userRole === "patient") {
+          pidForFetch = userId;
+          // only persist when there was no stored patientId previously
+          if (!localStorage.getItem("patientId")) {
+            localStorage.setItem("patientId", pidForFetch);
+            setPatientId(pidForFetch);
+          }
         } else {
           setPatientId("");
           if (mounted) setDocuments([]);
@@ -46,7 +52,7 @@ export default function Records() {
         }
       }
 
-      if (mounted) await fetchDocuments(pid);
+      if (mounted) await fetchDocuments(pidForFetch);
     })();
 
     const onVisibility = () => {
