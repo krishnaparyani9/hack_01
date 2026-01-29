@@ -5,12 +5,13 @@ export const saveAuth = (token: string, user: any) => {
   localStorage.setItem("userId", user.id);
   localStorage.setItem("userName", user.name);
   localStorage.setItem("userEmail", user.email);
-  localStorage.setItem("userRole", user.role);
+  const normalizedRole = (user.role || "").toString().toLowerCase();
+  localStorage.setItem("userRole", normalizedRole);
   axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
   // If the authenticated user is a patient, ensure their persistent patientId is set to their user id
   // so documents uploaded under their account remain available across sign-outs.
-  if ((user.role as string) === "patient") {
+  if (normalizedRole === "patient") {
     try {
       localStorage.setItem("patientId", user.id);
       if (user.name) localStorage.setItem("patientName", user.name);

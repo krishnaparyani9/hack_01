@@ -254,6 +254,18 @@ a {
 }
 .btn-outline:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(6,10,20,0.06); }
 
+/* Scrollable list utility for long lists inside cards */
+.scroll-list {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 8px; /* avoid scrollbar overlaying content */
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-list::-webkit-scrollbar { width: 10px; }
+.scroll-list::-webkit-scrollbar-thumb { background: rgba(6,10,20,0.06); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+.scroll-list::-webkit-scrollbar-track { background: transparent; }
+
 /* circular icon toggle */
 .btn-icon { display: inline-grid; place-items: center; height: 36px; width: 36px; border-radius: 10px; border: none; cursor: pointer; background: transparent; }
 .theme-toggle.btn-icon { background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); border: 1px solid var(--glass-border); }

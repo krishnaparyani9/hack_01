@@ -16,8 +16,6 @@ const PatientLayout = ({ children }: { children: React.ReactNode }) => {
 
   const handleSignOut = () => {
     try {
-      const hadAuth = !!localStorage.getItem("authToken");
-
       // remove auth-related keys
       localStorage.removeItem("authToken");
       localStorage.removeItem("userId");
@@ -25,13 +23,8 @@ const PatientLayout = ({ children }: { children: React.ReactNode }) => {
       localStorage.removeItem("userEmail");
       localStorage.removeItem("userRole");
 
-      // If the user was NOT authenticated (guest), clear patient-specific local data.
-      // If the user was authenticated, preserve patientId so uploaded documents remain available across sign-outs.
-      if (!hadAuth) {
-        localStorage.removeItem("patientId");
-        localStorage.removeItem("patientName");
-        localStorage.removeItem("patientEmail");
-      }
+      // Preserve patient-specific local data (patientId, name, email) to avoid losing uploaded documents on sign-out.
+      // If the user wants to remove local patient data they can use the 'Clear Local Data' option (not implemented yet).
 
       // clear any active session info
       localStorage.removeItem("sessionId");

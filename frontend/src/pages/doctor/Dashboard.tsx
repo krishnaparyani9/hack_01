@@ -19,9 +19,25 @@ const DoctorDashboard = () => {
 
     (async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/session/${sid}`);
+        const token = localStorage.getItem("authToken");
+
+        const res = await fetch(
+          `http://localhost:5000/api/session/${sid}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!res.ok) throw new Error("Session fetch failed");
+
         const json = await res.json();
-        if (json && json.data) setActiveSession(json.data);
+        if (json && json.data) {
+          setActiveSession(json.data);
+        } else {
+          setActiveSession(null);
+        }
       } catch {
         setActiveSession(null);
       }
@@ -57,21 +73,73 @@ const DoctorDashboard = () => {
 
       {/* ACTIVE SESSION */}
       {hasActiveSession && activeSession && (
-        <div className="card" style={{ marginBottom: "36px", borderLeft: "5px solid var(--primary)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div
+          className="card"
+          style={{
+            marginBottom: "36px",
+            borderLeft: "5px solid var(--primary)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 12,
+            }}
+          >
             <h3>Active Consultation</h3>
-            <span className="doc-badge" style={{ background: "#ecfeff", color: "#064e3b" }}>ACTIVE</span>
+            <span
+              className="doc-badge"
+              style={{ background: "#ecfeff", color: "#064e3b" }}
+            >
+              ACTIVE
+            </span>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
-            <div><strong>Patient</strong><div className="muted">{activeSession.patientId || "Anonymous"}</div></div>
-            <div><strong>Access</strong><div className="muted">{activeSession.accessType === "write" ? "View + Write" : "View"}</div></div>
-            <div><strong>Started</strong><div className="muted">{formatStarted(activeSession.createdAt)}</div></div>
-            <div><strong>Time Left</strong><div className="muted">{formatTimeLeft(activeSession.expiresAt)}</div></div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 12,
+              marginBottom: 18,
+            }}
+          >
+            <div>
+              <strong>Patient</strong>
+              <div className="muted">
+                {activeSession.patientId || "Anonymous"}
+              </div>
+            </div>
+
+            <div>
+              <strong>Access</strong>
+              <div className="muted">
+                {activeSession.accessType === "write"
+                  ? "View + Write"
+                  : "View"}
+              </div>
+            </div>
+
+            <div>
+              <strong>Started</strong>
+              <div className="muted">
+                {formatStarted(activeSession.createdAt)}
+              </div>
+            </div>
+
+            <div>
+              <strong>Time Left</strong>
+              <div className="muted">
+                {formatTimeLeft(activeSession.expiresAt)}
+              </div>
+            </div>
           </div>
 
           <Link to={`/doctor/session/${activeSession.sessionId}`}>
-            <button className="btn btn-primary" style={{ width: "100%" }}>Continue Consultation</button>
+            <button className="btn btn-primary" style={{ width: "100%" }}>
+              Continue Consultation
+            </button>
           </Link>
         </div>
       )}
