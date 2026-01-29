@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import DocumentModal from "../../components/DocumentModal";
 
@@ -11,6 +11,7 @@ type DocumentItem = { id: string; url: string; type: DocType; uploadedByName?: s
 
 export default function DoctorSession() {
   const { sessionId } = useParams();
+  const navigate = useNavigate();
 
   const [accessType, setAccessType] = useState<"view" | "write">("view");
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -41,8 +42,16 @@ export default function DoctorSession() {
           setExpiresAt(exp);
           setTimeLeft(Math.max(0, exp - Date.now()));
         }
-      } catch {
-        // fallback to localStorage if server call fails
+      } catch (err) {
+        // If the session was deleted/ended on the server, redirect back to dashboard
+        const status = (err as any)?.response?.status;
+        if (status === 404) {
+          window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Session ended", type: "error" } }));
+          navigate("/doctor/dashboard");
+          return;
+        }
+
+        // fallback to localStorage if server call fails for other reasons
         const storedAccess = localStorage.getItem("doctorAccessType");
         if (storedAccess === "view" || storedAccess === "write") {
           setAccessType(storedAccess);
@@ -96,6 +105,8 @@ export default function DoctorSession() {
         // switch to view mode locally
         setAccessType("view");
         localStorage.removeItem("doctorAccessType");
+        // Redirect doctor back to dashboard when session expires
+        navigate("/doctor/dashboard");
       }
     };
 
@@ -103,6 +114,19 @@ export default function DoctorSession() {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [expiresAt]);
+
+  // Listen for storage changes (session cleared from another tab) and redirect
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "doctorActiveSessionId" && !e.newValue) {
+        window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Session ended", type: "error" } }));
+        navigate("/doctor/dashboard");
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [navigate]);
 
   /* UI BELOW — unchanged */
 

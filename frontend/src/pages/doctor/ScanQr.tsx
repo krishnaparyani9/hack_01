@@ -19,9 +19,18 @@ export default function ScanQR() {
     scanner.render(
       async (decodedText) => {
         try {
-          const res = await axios.post(`${API}/api/session/validate`, {
-            token: decodedText,
-          });
+          const token = decodedText?.toString().trim();
+          const authToken = localStorage.getItem("authToken");
+          if (!authToken) {
+            alert("Please sign in as a doctor before scanning");
+            return;
+          }
+
+          const res = await axios.post(
+            `${API}/api/session/validate`,
+            { token },
+            { headers: { Authorization: `Bearer ${authToken}` } }
+          );
 
           const { sessionId, accessType } = res.data.data;
 
@@ -31,7 +40,17 @@ export default function ScanQR() {
           await scanner.clear();
 
           navigate(`/doctor/session/${sessionId}`);
-        } catch {
+        } catch (err: any) {
+          console.error("QR validate error:", err?.response ?? err);
+          const status = err?.response?.status;
+          if (status === 401 || status === 403) {
+            window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Authentication required — please sign in again", type: "error" } }));
+            // stop scanner and redirect to login so user can refresh credentials
+            await scanner.clear();
+            navigate("/auth/login");
+            return;
+          }
+
           alert("Invalid or expired QR");
         }
       },

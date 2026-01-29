@@ -141,6 +141,29 @@ const DoctorDashboard = () => {
               Continue Consultation
             </button>
           </Link>
+          <div style={{ marginTop: 8 }}>
+            <button
+              className="btn btn-secondary"
+              style={{ width: "100%" }}
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem("authToken");
+                  await fetch(`http://localhost:5000/api/session/${activeSession.sessionId}`, {
+                    method: "DELETE",
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                  });
+                } catch (e) {
+                  // ignore
+                }
+
+                localStorage.removeItem("doctorActiveSessionId");
+                setActiveSession(null);
+                window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Session ended", type: "success" } }));
+              }}
+            >
+              End Session
+            </button>
+          </div>
         </div>
       )}
 
