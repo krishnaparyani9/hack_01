@@ -3,8 +3,8 @@ import {
   createSessionController,
   validateSessionController,
   getSessionController,
-  endSessionController,
-  createSessionAnonController,
+  deleteSessionController,
+  createAnonSessionController, // corrected name
 } from "../controllers/session.controller";
 import { authMiddleware, requireRole } from "../middleware/auth.middleware";
 
@@ -15,9 +15,9 @@ const router = Router();
  */
 router.post("/create", authMiddleware, requireRole("patient"), createSessionController);
 
-// Create a session using a stored patientId (no auth required). Used by patient
-// UI flows when the app has a persistent `patientId` but no active auth token.
-router.post("/create-anon", createSessionAnonController);
+// Create a session using a stored patientId (no auth required).
+// Used by patient UI flows when the app has a persistent `patientId` but no active auth token.
+router.post("/create-anon", createAnonSessionController);
 
 /**
  * Doctor validates QR
@@ -25,13 +25,13 @@ router.post("/create-anon", createSessionAnonController);
 router.post("/validate", authMiddleware, requireRole("doctor"), validateSessionController);
 
 /**
- * Get session info (doctor / patient)
+ * Get session info (public - frontend expects to be able to read)
  */
-router.get("/:sessionId", authMiddleware, getSessionController);
+router.get("/:sessionId", getSessionController);
 
 /**
- * End session (patient/doctor)
+ * End session (requires auth)
  */
-router.delete("/:sessionId", authMiddleware, endSessionController);
+router.delete("/:sessionId", authMiddleware, deleteSessionController);
 
 export default router;

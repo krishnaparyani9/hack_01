@@ -71,7 +71,7 @@ export default function DoctorSession() {
 
 
   const getSafeUrl = (url: string) =>
-    url.startsWith("http") ? url : `https://${url}`;
+    /^(https?:|data:|blob:)/i.test(url) ? url : `https://${url}`;
 
   const inferType = (doc: DocumentItem) => {
     if (doc.type) return doc.type.toUpperCase();

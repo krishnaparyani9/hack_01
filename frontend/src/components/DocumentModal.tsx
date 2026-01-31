@@ -10,7 +10,11 @@ type Props = {
   createdAt?: string;
 };
 
-const isImage = (u: string) => !!u.match(/\.(jpg|jpeg|png|gif)$/i);
+const isImage = (u: string) => {
+  if (!u) return false;
+  if (u.startsWith("data:image")) return true;
+  return !!u.match(/\.(jpg|jpeg|png|gif)$/i);
+};
 
 export default function DocumentModal({ url, onClose, title, uploadedByName, uploadedByRole, createdAt }: Props) {
   const elRef = useRef<HTMLDivElement | null>(null);
@@ -39,18 +43,41 @@ export default function DocumentModal({ url, onClose, title, uploadedByName, upl
 
   const downloadFile = async () => {
     try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      const fileName = url.split("/").pop() || "document";
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(blobUrl);
-      window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Download started", type: "success" } }));
+      if (url.startsWith("data:")) {
+        // data:[<mediatype>][;base64],<data>
+        const match = url.match(/^data:([^;]+);base64,(.*)$/);
+        if (!match) throw new Error("Invalid data URL");
+        const mime = match[1];
+        const b64 = match[2];
+        const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        const blob = new Blob([bytes], { type: mime });
+        // derive extension
+        const extMap: Record<string,string> = { "image/png":"png", "image/jpeg":"jpg", "image/jpg":"jpg", "application/pdf":"pdf" };
+        const ext = extMap[mime] || "bin";
+        const fileName = `document.${ext}`;
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(blobUrl);
+        window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Download started", type: "success" } }));
+      } else {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const fileName = url.split("/").pop() || "document";
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(blobUrl);
+        window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Download started", type: "success" } }));
+      }
     } catch (err) {
       window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Download failed", type: "error" } }));
     }

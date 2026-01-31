@@ -4,7 +4,8 @@ import {
   uploadDocumentByPatientController,
   getDocumentsController,
   getDocumentsByPatientController,
-  deleteDocumentController
+  deleteDocumentController,
+  uploadDocumentByPatientJsonController, // <-- new
 } from "../controllers/document.controller";
 import { upload } from "../middleware/upload";
 import { authMiddleware, requireAuth } from "../middleware/auth.middleware";
@@ -13,25 +14,27 @@ const router = Router();
 
 /**
  * Upload document directly by patient (no QR)
+ * NOTE: no authMiddleware so patient UI uploads using patientId
  */
 router.post(
   "/upload/by-patient",
-  authMiddleware,
+  // authMiddleware,   // intentionally not required for patient-side upload using patientId
   upload.single("file"),
   uploadDocumentByPatientController
 );
 
 /**
- * Fetch documents by patientId (⚠️ MUST COME BEFORE :sessionId)
+ * Fetch documents by patientId (must come before :sessionId)
+ * NOTE: public so patient UI can fetch by patientId
  */
 router.get(
   "/patient/:patientId",
-  authMiddleware,
+  // authMiddleware,  // intentionally not required
   getDocumentsByPatientController
 );
 
 /**
- * Upload document via QR session (doctor)
+ * Upload document via QR session (doctor) - requires auth
  */
 router.post(
   "/upload/:sessionId",
@@ -44,6 +47,18 @@ router.post(
  * Fetch documents via QR session
  */
 router.get("/:sessionId", getDocumentsController);
+
+/**
+ * Fallback JSON upload endpoint for clients that can't send multipart/form-data
+ * (public so patient UI can provide persisted patientId)
+ */
+router.post(
+  "/upload/by-patient-json",
+  // no auth
+  uploadDocumentByPatientJsonController
+);
+
 // Delete a document (patient only)
 router.delete('/:id', authMiddleware, requireAuth, deleteDocumentController);
+
 export default router;

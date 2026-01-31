@@ -91,6 +91,17 @@ export default function Documents() {
     }
   };
 
+  // convert File to data URL
+  const fileToDataUrl = (f: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve(String(reader.result));
+      };
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(f);
+    });
+
   const uploadDocument = async () => {
     // Patients should always upload with their persistent patientId — QR restrictions apply only to doctors
     if (!file) return;
@@ -123,8 +134,8 @@ export default function Documents() {
 
     try {
       // Always use the patient upload endpoint on patient pages so expired sessions don't block uploads
+      // Do NOT set Content-Type manually; the browser will add the proper boundary.
       await axios.post(`${API}/api/documents/upload/by-patient`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (e) => {
           if (e.total) {
             setProgress(Math.round((e.loaded * 100) / e.total));
@@ -135,10 +146,40 @@ export default function Documents() {
       setFile(null);
       fetchDocuments(pid);
     } catch (err: unknown) {
+      console.error("Upload error (multipart):", err);
+
+      // show server message when available
       if (axios.isAxiosError(err) && err.response?.data?.message) {
-        alert(err.response.data.message);
+        const msg = err.response.data.message;
+        window.dispatchEvent(new CustomEvent("toast", { detail: { message: `Upload failed: ${msg}`, type: "error" } }));
       } else {
-        alert("Upload failed");
+        window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Upload failed, trying fallback...", type: "error" } }));
+      }
+
+      // FALLBACK: try sending file as data URL via JSON endpoint
+      try {
+        if (!file) throw new Error("No file for fallback");
+        const dataUrl = await fileToDataUrl(file);
+        const payload = {
+          patientId: pid,
+          type: docType,
+          uploaderName: localStorage.getItem("userName") || localStorage.getItem("patientName") || "Patient",
+          uploaderRole: "patient",
+          dataUrl,
+        };
+
+        const res = await axios.post(`${API}/api/documents/upload/by-patient-json`, payload, { headers: { "Content-Type": "application/json" } });
+        console.log("Fallback upload result:", res.data);
+        window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Uploaded via fallback", type: "success" } }));
+        setFile(null);
+        fetchDocuments(pid);
+      } catch (fbErr) {
+        console.error("Fallback upload failed:", fbErr);
+        if (axios.isAxiosError(fbErr) && fbErr.response?.data?.message) {
+          alert(fbErr.response.data.message);
+        } else {
+          alert("Upload failed");
+        }
       }
     } finally {
       setLoading(false);
@@ -147,8 +188,10 @@ export default function Documents() {
   };
 
   const getFileIcon = (url: string) => {
-    if (url.endsWith(".pdf")) return "📄";
-    if (url.match(/\.(jpg|jpeg|png)$/)) return "🖼️";
+    // accept data: URIs and treat data:image/* as images
+    if (url.startsWith("data:image")) return "🖼️";
+    if (url.endsWith(".pdf") || url.startsWith("data:application/pdf")) return "📄";
+    if (url.match(/\.(jpg|jpeg|png)$/) || url.startsWith("data:image")) return "🖼️";
     return "📁";
   };
 
@@ -243,7 +286,7 @@ export default function Documents() {
         ) : (
           <div className="scroll-list" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
             {documents.map((doc, index) => {
-              const safeUrl = doc.url.startsWith("http") ? doc.url : `https://${doc.url}`;
+              const safeUrl = /^(https?:|data:|blob:)/i.test(doc.url) ? doc.url : `https://${doc.url}`;
 
               return (
                 <div key={doc.id || index} className="file-row">
@@ -277,7 +320,17 @@ export default function Documents() {
                       onClick={async () => {
                         if (!confirm("Delete this document?")) return;
                         try {
-                          await axios.delete(`${API}/api/documents/${doc.id}`);
+                          // require auth token for delete
+                          const token = localStorage.getItem("authToken");
+                          if (!token) {
+                            window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Sign in to delete documents", type: "error" } }));
+                            return;
+                          }
+
+                          await axios.delete(`${API}/api/documents/${doc.id}`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                          });
+
                           window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Document deleted", type: "success" } }));
                           fetchDocuments();
                         } catch (err: unknown) {

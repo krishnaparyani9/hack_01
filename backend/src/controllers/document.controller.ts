@@ -11,7 +11,7 @@ export const uploadDocumentController = (req: Request, res: Response) => {
   const sessionId = req.params.sessionId as string;
 
   if (!sessionId || !req.file?.buffer) {
-    return res.status(400).json({ message: "Invalid request" });
+    return res.status(400).json({ message: "Invalid request: missing sessionId or file" });
   }
 
   // Validate session
@@ -27,9 +27,41 @@ export const uploadDocumentController = (req: Request, res: Response) => {
   const stream = cloudinary.uploader.upload_stream(
     { resource_type: "auto" },
     async (error, result) => {
+      // If Cloudinary fails, fall back to storing the file as a data URL in the DB
       if (error || !result) {
-        console.error("Cloudinary upload failed:", error);
-        return res.status(500).json({ message: "Upload failed" });
+        console.error("Cloudinary upload failed (doctor):", error);
+        try {
+          const buffer = req.file!.buffer;
+          const mime = req.file!.mimetype || "application/octet-stream";
+          const dataUrl = `data:${mime};base64,${buffer.toString("base64")}`;
+
+          const auth = (req as any).user as
+            | { userId?: string; role?: string; name?: string }
+            | undefined;
+
+          const doc = await Document.create({
+            patientId: session.patientId,
+            url: dataUrl,
+            type: (req.body?.type as string) || "Other",
+            uploadedByName: auth?.name || req.body?.uploaderName,
+            uploadedByRole: auth?.role || "doctor",
+          });
+
+          return res.status(201).json({
+            message: "Document uploaded (fallback stored in DB)",
+            data: {
+              id: doc._id,
+              url: doc.url,
+              type: doc.type,
+              uploadedByName: doc.uploadedByName,
+              uploadedByRole: doc.uploadedByRole,
+              createdAt: doc.createdAt,
+            },
+          });
+        } catch (fallbackErr) {
+          console.error("Fallback save failed (doctor):", fallbackErr);
+          return res.status(500).json({ message: "Upload failed (cloudinary + fallback)" });
+        }
       }
 
       try {
@@ -57,7 +89,7 @@ export const uploadDocumentController = (req: Request, res: Response) => {
           },
         });
       } catch (err) {
-        console.error("Document create failed:", err);
+        console.error("Document create failed (doctor):", err);
         return res.status(500).json({ message: "Failed to save document" });
       }
     }
@@ -82,16 +114,58 @@ export const uploadDocumentByPatientController = (
       ? auth.userId
       : (req.body?.patientId as string | undefined);
 
+  // DEBUG: log request info to help diagnose missing uploads
+  console.log("Patient upload request:", {
+    patientIdFromBody: req.body?.patientId,
+    resolvedPatientId: patientId,
+    authPresent: !!auth,
+    fileOriginalName: req.file?.originalname,
+    fileSize: req.file?.size,
+  });
+
   if (!patientId || !req.file?.buffer) {
-    return res.status(400).json({ message: "Invalid request" });
+    // give more context in the response and server log
+    console.warn("Invalid upload request - missing patientId or file", {
+      patientId,
+      filePresent: !!req.file,
+    });
+    return res.status(400).json({ message: "Invalid request: missing patientId or file" });
   }
 
   const stream = cloudinary.uploader.upload_stream(
     { resource_type: "auto" },
     async (error, result) => {
+      // Cloudinary failed -> fallback to data URL stored in DB
       if (error || !result) {
-        console.error("Cloudinary upload failed:", error);
-        return res.status(500).json({ message: "Upload failed" });
+        console.error("Cloudinary upload failed (patient):", error);
+        try {
+          const buffer = req.file!.buffer;
+          const mime = req.file!.mimetype || "application/octet-stream";
+          const dataUrl = `data:${mime};base64,${buffer.toString("base64")}`;
+
+          const doc = await Document.create({
+            patientId,
+            url: dataUrl,
+            type: (req.body?.type as string) || "Other",
+            uploadedByName: auth?.name,
+            uploadedByRole: "patient",
+          });
+
+          return res.status(201).json({
+            message: "Document uploaded (fallback stored in DB)",
+            data: {
+              id: doc._id,
+              url: doc.url,
+              type: doc.type,
+              uploadedByName: doc.uploadedByName,
+              uploadedByRole: doc.uploadedByRole,
+              createdAt: doc.createdAt,
+            },
+          });
+        } catch (fallbackErr) {
+          console.error("Fallback save failed (patient):", fallbackErr);
+          return res.status(500).json({ message: "Upload failed (cloudinary + fallback)" });
+        }
       }
 
       try {
@@ -115,13 +189,62 @@ export const uploadDocumentByPatientController = (
           },
         });
       } catch (err) {
-        console.error("Document create failed:", err);
+        console.error("Document create failed (patient):", err);
         return res.status(500).json({ message: "Failed to save document" });
       }
     }
   );
 
   stream.end(req.file.buffer);
+};
+
+/**
+ * NEW: accept data-url JSON fallback from client
+ */
+export const uploadDocumentByPatientJsonController = async (req: Request, res: Response) => {
+  try {
+    const { patientId, type, uploaderName, uploaderRole, dataUrl } = req.body as {
+      patientId?: string;
+      type?: string;
+      uploaderName?: string;
+      uploaderRole?: string;
+      dataUrl?: string;
+    };
+
+    console.log("JSON patient upload request:", { patientId, hasDataUrl: !!dataUrl, uploaderName });
+
+    if (!patientId || !dataUrl) {
+      return res.status(400).json({ message: "Missing patientId or dataUrl" });
+    }
+
+    // Basic sanity check of data URL
+    if (!/^data:[\w/+-]+;base64,/.test(dataUrl)) {
+      return res.status(400).json({ message: "Invalid dataUrl" });
+    }
+
+    const doc = await Document.create({
+      patientId,
+      url: dataUrl,
+      type: (type as string) || "Other",
+      uploadedByName: uploaderName,
+      uploadedByRole: uploaderRole || "patient",
+    });
+
+    return res.status(201).json({
+      message: "Document uploaded (data-url)",
+      data: {
+        id: doc._id,
+        url: doc.url,
+        type: doc.type,
+        uploadedByName: doc.uploadedByName,
+        uploadedByRole: doc.uploadedByRole,
+        createdAt: doc.createdAt,
+      },
+    });
+  } catch (err) {
+    console.error("uploadDocumentByPatientJsonController error:", err);
+    return res.status(500).json({ message: "Failed to save document" });
+  }
 };
 
 /**
@@ -138,21 +261,35 @@ export const getDocumentsController = async (
     return res.status(401).json({ message: "Session invalid or expired" });
   }
 
-  const docs = await Document.find({
-    patientId: session.patientId,
-  }).sort({ createdAt: -1 });
+  try {
+    // If the session explicitly lists sharedDocIds, return only those docs
+    const sharedIds = (session as any).sharedDocIds as string[] | undefined;
 
-  return res.status(200).json({
-    message: "Documents fetched",
-    data: docs.map((d) => ({
-      id: d._id,
-      url: d.url,
-      type: d.type,
-      uploadedByName: d.uploadedByName,
-      uploadedByRole: d.uploadedByRole,
-      createdAt: d.createdAt,
-    })),
-  });
+    let docs;
+    if (Array.isArray(sharedIds) && sharedIds.length > 0) {
+      docs = await Document.find({ _id: { $in: sharedIds } }).sort({ createdAt: -1 });
+    } else {
+      // fallback: return all documents for the patient
+      docs = await Document.find({
+        patientId: session.patientId,
+      }).sort({ createdAt: -1 });
+    }
+
+    return res.status(200).json({
+      message: "Documents fetched",
+      data: docs.map((d) => ({
+        id: d._id,
+        url: d.url,
+        type: d.type,
+        uploadedByName: d.uploadedByName,
+        uploadedByRole: d.uploadedByRole,
+        createdAt: d.createdAt,
+      })),
+    });
+  } catch (err) {
+    console.error("Failed to fetch documents for session:", err);
+    return res.status(500).json({ message: "Failed to fetch documents" });
+  }
 };
 
 /**

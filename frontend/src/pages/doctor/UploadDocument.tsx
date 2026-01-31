@@ -28,12 +28,15 @@ export default function UploadDocument() {
     formData.append("uploaderRole", "doctor");
 
     try {
-      await axios.post(`${API}/api/documents/upload/${sessionId}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (e) => {
+      const authToken = localStorage.getItem("authToken");
+      const opts: any = {
+        onUploadProgress: (e: ProgressEvent) => {
           if (e.total) setProgress(Math.round((e.loaded * 100) / e.total));
         },
-      });
+      };
+      if (authToken) opts.headers = { Authorization: `Bearer ${authToken}` };
+
+      await axios.post(`${API}/api/documents/upload/${sessionId}`, formData, opts);
 
       window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Document uploaded", type: "success" } }));
       // navigate back to session documents view
