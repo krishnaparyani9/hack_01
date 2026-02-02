@@ -125,7 +125,7 @@ const PatientLayout = ({ children }: { children: React.ReactNode }) => {
             className={isActive("/patient/records")}
             to="/patient/records"
           >
-            My Records
+            Tap to share
           </Link>
 
           {/* ✅ NEW: Upload Documents */}
@@ -136,13 +136,7 @@ const PatientLayout = ({ children }: { children: React.ReactNode }) => {
             Upload Documents
           </Link>
 
-          <Link
-            className={isActive("/patient/generate-qr")}
-            to="/patient/generate-qr"
-          >
-            Generate QR
-          </Link>
-
+          
           <Link
             className={isActive("/patient/emergency")}
             to="/patient/emergency"
