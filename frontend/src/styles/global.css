@@ -76,6 +76,19 @@ body.dark {
 }
 .card, .editor-card { animation: fadeUp 260ms ease both; }
 
+/* Prevent repeated mount animations inside the main content area.
+  Frequent re-renders (lists, modals, or state updates) can cause
+  elements to re-mount and replay the entrance animation, which
+  appears as a blinking effect in some views (e.g. doctor pages).
+  Disable the animation for cards within `.main` to stop that. */
+.main .card, .main .editor-card { animation: none; }
+
+/* Disable mount/entrance animations for modal editor cards to prevent
+  visible blinking when the modal is opened or the iframe/image inside
+  re-renders. Modals are portalled to document.body so they are not
+  covered by the `.main` rule above. */
+.editor-modal .editor-card { animation: none !important; transform: none !important; opacity: 1 !important; }
+
 /* Avatar uplift */
 .avatar { transition: transform 240ms ease, box-shadow 240ms ease; }
 .avatar:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(12,16,20,0.08); }
