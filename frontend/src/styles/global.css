@@ -151,6 +151,48 @@ body {
 /* subtle main gradient cards */
 .main { background: linear-gradient(180deg, transparent 0%, rgba(10,14,20,0.01) 100%); }
 
+/* Grid used on patient dashboard */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+/* Card title polish */
+.card h3 { font-size: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+
+/* muted helper */
+.muted { color: var(--text-muted); font-size: 13px; margin-top: 6px; }
+
+/* Buttons */
+.btn { padding: 10px 14px; border-radius: 10px; border: none; cursor: pointer; background: transparent; color: var(--text-main); }
+.btn-primary { background: linear-gradient(90deg, var(--primary), var(--accent)); color: white; font-weight: 700; box-shadow: 0 8px 28px rgba(43,124,255,0.12); border: none; }
+.btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+
+/* small round badge for active docs */
+.doc-badge { padding: 6px 10px; border-radius: 999px; font-weight: 700; font-size: 12px; display: inline-block; }
+.doc-badge.active { background: linear-gradient(90deg, rgba(34,193,166,0.12), rgba(96,165,250,0.06)); color: var(--accent); border: 1px solid rgba(34,193,166,0.06); }
+
+/* main content wrapper */
+.main .content { padding: 28px; max-width: 980px; margin: 0 auto; animation: fadeUp 280ms ease both; }
+
+/* page header (used by layouts/pages) */
+.page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.page-title { font-size: 22px; font-weight: 800; background: linear-gradient(90deg, var(--primary), var(--accent)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+/* small pulsing accent */
+.pulse-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px rgba(34,193,166,0.28); animation: pulse 2s infinite; }
+@keyframes pulse { 0% { transform: scale(1); opacity: 1 } 70% { transform: scale(1.8); opacity: 0.2 } 100% { transform: scale(1); opacity: 1 } }
+
+/* sidebar nav polish */
+.sidebar nav a { display: block; padding: 10px 12px; border-radius: 10px; color: var(--text-main); margin-bottom: 8px; font-weight: 700; }
+.sidebar nav a:hover { background: var(--primary-light); color: var(--primary); transform: translateX(4px); transition: transform 150ms ease; }
+.sidebar nav a.active { background: linear-gradient(90deg, rgba(43,124,255,0.06), rgba(34,193,166,0.04)); border-left: 3px solid var(--primary); }
+
+/* decorative icons inside main */
+.main-bg-icons { position: absolute; inset: auto 24px 24px auto; pointer-events: none; z-index: 0; }
+
+
 /* button micro interactions */
 .btn, .btn-outline, .btn-primary { transition: transform 120ms ease, box-shadow 120ms ease; }
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(43,124,255,0.12); }
@@ -398,6 +440,135 @@ body.dark .bg-icon.icon-stethoscope { opacity: 0.10; background-image: url("data
 @media (prefers-reduced-motion: reduce) {
   .auth-page::before, .auth-page::after { animation: none; transition: none; }
 }
+
+/* Landing specific tweaks */
+.landing-hero { padding: 48px 24px; }
+.auth-hero h1 { font-size: 36px; line-height: 1.05; margin-bottom: 12px; color: var(--text-main); }
+.auth-card { box-shadow: 0 18px 50px rgba(6,10,20,0.06); }
+.feature-card { padding: 14px; border-radius: 12px; }
+.auth-card .card { background: transparent; box-shadow: none; border: none; }
+
+/* Landing grid for hero + card */
+.landing-grid {
+  display: grid;
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  gap: clamp(32px, 6vw, 64px);
+  align-items: center;
+  padding: clamp(48px, 8vh, 96px) clamp(28px, 5vw, 80px) clamp(48px, 8vh, 96px) clamp(48px, 9vw, 140px);
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.landing-hero { padding: clamp(8px, 2vw, 28px) 0; }
+.landing-hero > div { max-width: clamp(420px, 48vw, 560px); margin: 0; }
+.landing-hero h1 { font-size: clamp(2.2rem, 3.4vw, 3rem); line-height: 1.16; text-wrap: balance; }
+.auth-card { border-radius: 16px; box-shadow: 0 28px 90px rgba(6,10,20,0.08); padding: clamp(28px, 3vw, 44px); margin-left: 0; justify-self: end; transform: none; background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.85)); width: 100%; max-width: 420px; }
+
+/* Add inner spacing inside the info card to separate headings and descriptions */
+.auth-card > div:first-child { margin-bottom: 22px; }
+.auth-card hr { margin: 22px 0; border-top-width: 1px; }
+.auth-card h3 { margin-bottom: 6px; }
+.auth-card .muted { margin-top: 10px; line-height: 1.5; }
+
+/* Improve hero description visibility and spacing */
+.landing-hero { position: relative; z-index: 3; }
+.landing-hero > div { z-index: 3; }
+.landing-hero p, .landing-hero .muted {
+  color: rgba(15,23,42,0.72);
+  font-size: clamp(1rem, 1.2vw + 0.56rem, 1.12rem);
+  line-height: 1.6;
+  margin-top: 16px;
+  max-width: 520px;
+}
+
+/* Ensure the floating bg icons stay behind hero text */
+.auth-bg-icons { z-index: 1; }
+
+body.dark .landing-grid { background: linear-gradient(160deg, rgba(12,18,28,0.92), rgba(8,14,24,0.86)); border-radius: 24px; padding-bottom: clamp(52px, 9vh, 110px); }
+body.dark .landing-hero h1 { color: var(--text-main); }
+body.dark .landing-hero p,
+body.dark .landing-hero .muted { color: rgba(226,232,240,0.86); }
+body.dark .auth-card { background: linear-gradient(180deg, rgba(16,24,34,0.92), rgba(12,18,28,0.88)); box-shadow: 0 26px 70px rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.04); }
+body.dark .auth-card .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); }
+
+/* Responsive tweaks for hero to avoid overflow and keep description visible */
+@media (max-width: 900px) {
+  .landing-hero h1 { font-size: 2.4rem; }
+  .landing-hero p, .landing-hero .muted { font-size: 1rem; }
+  .landing-grid { grid-template-columns: 1fr; padding: 32px 24px 48px; gap: 28px; }
+  .landing-hero > div { margin-left: 0; max-width: 100%; }
+  .auth-card { justify-self: stretch; width: 100%; max-width: none; }
+}
+
+/* Prevent accidental horizontal overflow on small viewports caused by wide padding */
+body { overflow-x: hidden; }
+
+@media (max-width: 980px) {
+  .landing-grid { grid-template-columns: 1fr; padding: 28px 0; }
+  .auth-card { margin-top: 18px; }
+}
+
+/* Header / Footer styles */
+
+.container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+
+.site-header { display: block; padding: 10px 0; position: sticky; top: 0; z-index: 60; margin: 0; background: rgba(255,255,255,0.6); border: 1px solid rgba(15,23,42,0.04); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: 0 6px 18px rgba(10,14,20,0.04); }
+.site-header .container { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.site-header .brand { text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
+.site-header .logo { font-weight: 900; background: linear-gradient(90deg, var(--primary), var(--accent)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-size: 20px; }
+.site-header nav { display: flex; gap: 12px; align-items: center; }
+.site-header .theme-toggle { height: 36px; width: 36px; display: inline-grid; place-items: center; border-radius: 10px; border: 1px solid rgba(15,23,42,0.06); background: rgba(255,255,255,0.32); }
+.site-header .theme-toggle:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(15,23,42,0.1); }
+.site-header .nav-link { padding: 6px 10px; border-radius: 8px; color: var(--text-main); text-decoration: none; font-weight: 700; font-size: 14px; }
+.site-header .nav-link:hover { background: rgba(255,255,255,0.04); transform: translateY(-2px); }
+.site-header .nav-cta { background: linear-gradient(90deg, var(--primary), var(--accent)); color: white; padding: 8px 14px; border-radius: 10px; box-shadow: 0 8px 18px rgba(43,124,255,0.08); font-size: 14px; }
+body.dark .site-header { background: rgba(6,10,20,0.48); border-color: rgba(255,255,255,0.04); }
+body.dark .site-header .theme-toggle { background: rgba(12,18,28,0.55); border-color: rgba(255,255,255,0.08); }
+
+
+.site-footer { padding: 12px 0; margin-top: 18px; border-top: 1px solid var(--border); background: transparent; }
+.site-footer .container { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.site-footer .nav-link { margin-left: 12px; color: var(--text-muted); font-weight: 700; font-size: 13px; }
+
+/* smaller footer on large screens: keep it visually subtle */
+@media (min-width: 1100px) {
+  .site-footer { padding-left: 0; padding-right: 0; }
+}
+
+/* Shift card further left on wide screens so it visually uses more page width */
+
+@media (min-width: 1280px) {
+  .landing-grid { grid-template-columns: minmax(760px, 1fr) 480px; }
+  .auth-card { transform: none; justify-self: end; }
+}
+
+@media (min-width: 1600px) {
+  .landing-grid { grid-template-columns: minmax(1000px, 1fr) 480px; }
+}
+
+@media (max-width: 980px) {
+  .auth-card { transform: none; justify-self: stretch; }
+}
+
+.site-header.card { /* defensive: if someone adds card class, neutralize it */
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 720px) {
+  .site-header .logo { font-size: 18px; }
+  .site-header .nav-link { padding: 6px 8px; font-size: 13px; }
+  .site-header .nav-cta { padding: 6px 10px; font-size: 13px; }
+  .site-footer .nav-link { font-size: 12px; }
+}
+
+
 
 
 .btn-outline:focus, .btn-icon:focus { outline: none; box-shadow: 0 0 0 3px rgba(43,124,255,0.12); }

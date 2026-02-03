@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "./context/ThemeContext";
 
 // AUTH
 import Login from "./pages/auth/login";
@@ -6,6 +7,7 @@ import Signup from "./pages/auth/signup";
 
 // UI
 import GlobalToast from "./components/GlobalToast";
+import Landing from "./pages/Landing";
 
 // PATIENT
 import PatientDashboard from "./pages/patient/Dashboard";
@@ -23,11 +25,15 @@ import DoctorLayout from "./components/DoctorLayout";
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <GlobalToast />
-      <Routes>
+    <ThemeProvider>
+      <BrowserRouter>
+        <GlobalToast />
+        <Routes>
+        {/* LANDING */}
+        <Route path="/" element={<Landing />} />
+
         {/* AUTH */}
-        <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
 
         {/* PATIENT */}
         <Route path="/patient/dashboard" element={<PatientDashboard />} />
@@ -57,7 +63,8 @@ export default function App() {
 
         {/* FALLBACK */}
         <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
