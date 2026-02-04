@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import DocumentModal from "../../components/DocumentModal";
 import QrModal from "../../components/QrModal";
@@ -23,6 +23,17 @@ export default function Records() {
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [showQrModal, setShowQrModal] = useState(false);
   const [generatingShare, setGeneratingShare] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<DocType | "All">("All");
+
+  const typeOptions = useMemo(() => {
+    const unique = Array.from(new Set(documents.map((doc) => doc.type)));
+    return ["All", ...unique];
+  }, [documents]);
+
+  const filteredDocuments = useMemo(() => {
+    if (typeFilter === "All") return documents;
+    return documents.filter((doc) => doc.type === typeFilter);
+  }, [documents, typeFilter]);
 
   useEffect(() => {
     let mounted = true;
@@ -212,65 +223,108 @@ export default function Records() {
         All documents linked to your account.
       </p>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-        <button className="btn btn-primary" onClick={openShareForSelected} disabled={selectedIds.length === 0}>
-          Share Selected ({selectedIds.length})
-        </button>
-      </div>
-
       <div className="card">
         {documents.length === 0 ? (
           <p style={{ color: "var(--text-muted)" }}>
             No records available yet.
           </p>
         ) : (
-          <div className="scroll-list" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-            {documents.map((doc, index) => {
-              const safeUrl = /^(https?:|data:|blob:)/i.test(doc.url) ? doc.url : `https://${doc.url}`;
+          <>
+            <div className="records-toolbar">
+              <div className="records-toolbar__summary">
+                <h3>Stored Documents</h3>
+                <span className="records-toolbar__hint">
+                  Showing {filteredDocuments.length} of {documents.length}
+                </span>
+              </div>
 
-              return (
-                <div
-                  key={doc.id || index}
-                  style={{
-                    padding: "16px",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "12px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                    <input
-                      type="checkbox"
-                      aria-label={`Select document ${index + 1}`}
-                      checked={selectedIds.includes(doc.id)}
-                      onChange={() => toggleSelect(doc.id)}
-                    />
-                    <div>
-                      <strong>Medical Record {index + 1}</strong>
-                      <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                        {doc.type} • {doc.uploadedByName ? `Uploaded by ${doc.uploadedByName}` : "Uploaded"} {doc.createdAt ? `• ${new Date(doc.createdAt).toLocaleString()}` : ""} • Secure cloud document
-                      </p>
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => setActiveDoc({ id: doc.id, url: safeUrl, type: doc.type, uploadedByName: doc.uploadedByName, uploadedByRole: doc.uploadedByRole, createdAt: doc.createdAt })}
-                    >
-                      View
-                    </button>
-
-                    <button className="btn btn-primary" onClick={() => openShareForDoc(doc)}>
-                      Share
-                    </button>
-                  </div>
+              <div className="records-toolbar__controls">
+                <div className="records-type-control">
+                  <label htmlFor="type-filter" className="records-filter-label">Type</label>
+                  <select
+                    id="type-filter"
+                    className="records-type-select"
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value as DocType | "All")}
+                  >
+                    {typeOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              );
-            })}
-          </div>
+
+                <button className="btn btn-primary records-share-btn" onClick={openShareForSelected} disabled={selectedIds.length === 0}>
+                  Share Selected ({selectedIds.length})
+                </button>
+              </div>
+            </div>
+
+            {filteredDocuments.length === 0 ? (
+              <p style={{ color: "var(--text-muted)" }}>
+                No records match the selected type.
+              </p>
+            ) : (
+              <div className="scroll-list" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                {filteredDocuments.map((doc, index) => {
+                  const safeUrl = /^(https?:|data:|blob:)/i.test(doc.url) ? doc.url : `https://${doc.url}`;
+                  const checkboxId = `record-select-${doc.id || index}`;
+                  const isSelected = selectedIds.includes(doc.id);
+                  const rowClass = isSelected ? "records-row records-row--selected" : "records-row";
+                  const metaParts = [
+                    doc.uploadedByName ? `Uploaded by ${doc.uploadedByName}` : "Uploaded",
+                    doc.createdAt ? new Date(doc.createdAt).toLocaleString() : null,
+                    doc.uploadedByRole || null,
+                    "Secure cloud document",
+                  ].filter(Boolean) as string[];
+
+                  return (
+                    <div key={doc.id || index} className={rowClass}>
+                      <div className="records-row__left">
+                        <input
+                          type="checkbox"
+                          id={checkboxId}
+                          aria-label={`Select document ${index + 1}`}
+                          checked={isSelected}
+                          onChange={() => toggleSelect(doc.id)}
+                        />
+                        <label htmlFor={checkboxId} className={`records-title${isSelected ? " records-title--selected" : ""}`}>
+                          <div className="records-title__row">
+                            <strong>Medical Record {index + 1}</strong>
+                            <span className="records-pill">{doc.type}</span>
+                          </div>
+                          <span className="records-meta">{metaParts.join(" • ")}</span>
+                        </label>
+                      </div>
+
+                      <div className="records-actions">
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() =>
+                            setActiveDoc({
+                              id: doc.id,
+                              url: safeUrl,
+                              type: doc.type,
+                              uploadedByName: doc.uploadedByName,
+                              uploadedByRole: doc.uploadedByRole,
+                              createdAt: doc.createdAt,
+                            })
+                          }
+                        >
+                          View
+                        </button>
+
+                        <button className="btn btn-primary" onClick={() => openShareForDoc(doc)}>
+                          Share
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </div>
 

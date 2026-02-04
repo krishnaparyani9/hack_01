@@ -1,37 +1,57 @@
 import PatientLayout from "../../components/PatientLayout";
 import { Link } from "react-router-dom";
+import { useMemo } from "react";
 
 const API = "http://localhost:5000";
 
 const Dashboard = () => {
+  const modules = useMemo(
+    () => [
+      {
+        title: "Records",
+        description: "Manage your medical documents",
+        to: "/patient/records",
+        action: "View Records",
+        icon: "🗂️",
+      },
+      {
+        title: "QR Access",
+        description: "Generate secure QR sessions",
+        to: "/patient/generate-qr",
+        action: "Generate QR",
+        icon: "🔐",
+      },
+      {
+        title: "Emergency",
+        description: "Highlight critical health info",
+        to: "/patient/emergency",
+        action: "Open",
+        icon: "🚨",
+      },
+    ],
+    []
+  );
+
   return (
     <PatientLayout>
-      <h2>Patient Dashboard</h2>
-      <p style={{ color: "var(--text-muted)", marginBottom: "24px" }}>
-        Overview of your health data and access control.
-      </p>
+      <section className="dashboard-hero">
+        <p className="dashboard-kicker">Care Portal</p>
+        <h2>Patient Dashboard</h2>
+        <p className="dashboard-subhead">Track your health records, share access, and keep critical information ready.</p>
+      </section>
 
-      <div className="card-grid">
-        <div className="card">
-          <h3>📁 Records</h3>
-          <p>Manage your medical documents</p>
-          <Link to="/patient/records">View Records →</Link>
-        </div>
-
-
-
-        <div className="card">
-          <h3>🔐 QR Access</h3>
-          <p>Share records securely</p>
-          <Link to="/patient/generate-qr">Generate QR →</Link>
-        </div>
-
-        <div className="card">
-          <h3>🚨 Emergency</h3>
-          <p>Critical health information</p>
-          <Link to="/patient/emergency">Open →</Link>
-        </div>
-      </div>
+      <section className="dashboard-tiles">
+        {modules.map((module) => (
+          <Link key={module.title} to={module.to} className="dashboard-tile">
+            <span className="dashboard-tile__icon" aria-hidden>
+              {module.icon}
+            </span>
+            <h3>{module.title}</h3>
+            <p>{module.description}</p>
+            <span className="dashboard-tile__cta">{module.action} →</span>
+          </Link>
+        ))}
+      </section>
       {/* END SESSION */}
       <div style={{ marginTop: 18 }}>
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 8 }}>
