@@ -19,10 +19,11 @@ export const createSessionController = async (req: Request, res: Response) => {
       });
     }
 
-    // Prevent creating a new session when the patient already has an active one
+    // Ensure the patient only ever has a single active session; replace any lingering one
     const existing = findActiveSessionByPatient(patientId);
     if (existing) {
-      return res.status(409).json({ message: "Active session already exists" });
+      // replace the previous session so patients can regenerate a fresh QR without manual cleanup
+      deleteSession(existing.sessionId);
     }
 
     const session = createSession({
@@ -61,7 +62,7 @@ export const createAnonSessionController = async (req: Request, res: Response) =
 
     const existing = findActiveSessionByPatient(patientId);
     if (existing) {
-      return res.status(409).json({ message: "Active session exists", data: { sessionId: existing.sessionId, expiresAt: existing.expiresAt } });
+      deleteSession(existing.sessionId);
     }
 
     const session = createSession({
