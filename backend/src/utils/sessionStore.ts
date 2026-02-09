@@ -1,7 +1,7 @@
 export type Session = {
   sessionId: string;
   token: string;
-  patientId: string;
+  patientId?: string;
   accessType: "view" | "write";
   createdAt: number;
   expiresAt: number;
@@ -15,6 +15,11 @@ const sessionsByToken: Record<string, Session> = {};
 
 const genId = () => Math.random().toString(36).slice(2, 10);
 const genToken = () => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+
+export function saveSession(session: Session) {
+  sessionsById[session.sessionId] = session;
+  sessionsByToken[session.token] = session;
+}
 
 export function createSession(opts: {
   patientId: string;
@@ -42,9 +47,7 @@ export function createSession(opts: {
     anon: !!opts.anon,
   };
 
-  sessionsById[sessionId] = session;
-  sessionsByToken[token] = session;
-
+  saveSession(session);
   return session;
 }
 

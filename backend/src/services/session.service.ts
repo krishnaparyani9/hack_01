@@ -9,16 +9,6 @@ export const createSession = (payload: CreateSessionPayload) => {
 
   // ✅ store session server-side and persist optional patientId
   const createdAt = Date.now();
-  saveSession({
-    sessionId,
-    accessType: payload.accessType,
-    expiresAt: createdAt + expiresInSeconds * 1000,
-    createdAt,
-    durationMinutes: payload.durationMinutes,
-    patientId: payload.patientId,
-  });
-
-  // ✅ include accessType and optional patientId in token
   const token = generateSessionToken(
     {
       sessionId,
@@ -27,6 +17,16 @@ export const createSession = (payload: CreateSessionPayload) => {
     },
     expiresInSeconds
   );
+
+  saveSession({
+    sessionId,
+    token,
+    accessType: payload.accessType,
+    expiresAt: createdAt + expiresInSeconds * 1000,
+    createdAt,
+    durationMinutes: payload.durationMinutes,
+    patientId: payload.patientId,
+  });
 
   return {
     sessionId,
