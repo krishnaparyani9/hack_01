@@ -34,9 +34,11 @@ const Emergency = () => {
 
   const emergency = data?.emergency;
 
-  const status = loading ? { label: "Updating", tone: "neutral" } : emergency
-    ? { label: "Ready", tone: "safe" }
-    : { label: "Not Set", tone: "warn" };
+  const status = loading
+    ? { label: "Updating", tone: "neutral" as const }
+    : emergency
+    ? { label: "Ready", tone: "safe" as const }
+    : { label: "Not Set", tone: "warn" as const };
 
   const rows = useMemo(
     () => [
@@ -57,42 +59,36 @@ const Emergency = () => {
 
   return (
     <PatientLayout>
-      <div className="emergency-hero">
-        <div className="emergency-hero__badge">Emergency Mode</div>
-        <h2>Critical Response Snapshot</h2>
+     
         
-      </div>
 
-      <div className="emergency-card">
-        <div className="emergency-card__header">
-          <h3>Critical Information</h3>
-          <span className={`emergency-card__status emergency-card__status--${status.tone}`}>
-            {status.label}
-          </span>
+        <div className="emergency-card">
+          <div className="emergency-card__header">
+            <h3>Critical Information</h3>
+            <span className={`emergency-card__status emergency-card__status--${status.tone}`}>
+              {status.label}
+            </span>
+          </div>
+
+          {loading ? (
+            <div className="emergency-card__state">Fetching the latest emergency details…</div>
+          ) : !emergency ? (
+            <div className="emergency-card__state">
+              No emergency profile yet. Use Edit Profile to add critical contacts and health notes.
+            </div>
+          ) : (
+            <dl className="emergency-list">
+              {rows.map(({ label, value }) => (
+                <div key={label} className="emergency-list__row">
+                  <dt>{label}</dt>
+                  <dd>{value || "—"}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </div>
 
-        {loading ? (
-          <div className="emergency-card__state">Fetching the latest emergency details…</div>
-        ) : !emergency ? (
-          <div className="emergency-card__state">
-            No emergency profile yet. Use Edit Profile to add critical contacts and health notes.
-          </div>
-        ) : (
-          <dl className="emergency-list">
-            {rows.map(({ label, value }) => (
-              <div key={label} className="emergency-list__row">
-                <dt>{label}</dt>
-                <dd>{value || "—"}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-      </div>
-
-      <div className="emergency-footnote">
-        <span aria-hidden>⚠️</span>
-        <p>This view reveals limited data for emergency personnel only and never includes full medical records.</p>
-      </div>
+       
     </PatientLayout>
   );
 };
