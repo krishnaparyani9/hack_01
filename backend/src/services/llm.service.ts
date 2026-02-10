@@ -1,21 +1,24 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 
 /**
- * LLM Service for generating medical document summaries using Google Gemini.
+ * LLM Service for generating medical document summaries using Groq's hosted models.
  * Ensures summaries are strictly derived from the provided text, no new diagnoses or advice.
  */
 export class LLMService {
-  private genAI: GoogleGenerativeAI;
-  private model: any;
+  private client: OpenAI;
+  private model: string;
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      throw new Error('GEMINI_API_KEY environment variable is not set');
+      throw new Error('GROQ_API_KEY environment variable is not set');
     }
 
-    this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    this.model = process.env.GROQ_MODEL?.trim() || 'llama-3.1-8b-instant';
+    const baseURL = process.env.GROQ_BASE_URL?.trim() || 'https://api.groq.com/openai/v1';
+
+    // Groq exposes an OpenAI-compatible API, so reuse the OpenAI SDK with a custom base URL.
+    this.client = new OpenAI({ apiKey, baseURL });
   }
 
   /**
@@ -35,7 +38,9 @@ IMPORTANT RULES:
 - DO NOT add new diagnoses, predictions, or medical advice.
 - DO NOT suggest treatments or recommendations.
 - Extract only: diagnoses mentioned, abnormal lab values, current medications, critical alerts.
-- Output in structured bullet points.
+- Merge duplicate measurements into one bullet noting the date range (e.g., "SaO2 92% on 06/04 - 07/05/2004").
+- Limit each section to at most three concise bullets; omit a section if no data.
+- Output sections in the order: Diagnoses, Abnormal Labs, Medications, Critical Alerts.
 - If no relevant information is found, state "No significant findings in the provided text."
 
 Medical Document Text:
@@ -44,14 +49,42 @@ ${text}
 Summary:
 `;
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const summary = response.text().trim();
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.2
+      });
+
+      const rawContent = response.choices[0]?.message?.content;
+      const summary = Array.isArray(rawContent)
+        ? rawContent.map(part => (typeof part === 'string' ? part : part?.text ?? '')).join('').trim()
+        : rawContent?.trim();
+      if (!summary) {
+        throw new Error('LLM returned an empty summary');
+      }
 
       console.log('LLM: Summary generated successfully');
       return summary;
     } catch (error) {
       console.error('Error generating summary with LLM:', error);
+
+      const status = (error as { status?: number })?.status;
+      const code = (error as { code?: string })?.code;
+      const message = (error as { message?: string })?.message ?? '';
+
+      if (status === 429 || code === 'insufficient_quota') {
+        throw new Error('Groq quota exceeded; please review usage limits or upgrade the plan.');
+      }
+
+      if (code === 'model_decommissioned' || message.includes('decommissioned')) {
+        throw new Error(`Groq model ${this.model} is deprecated; update GROQ_MODEL to a supported model (see console.groq.com/docs/models).`);
+      }
+
       throw new Error('Failed to generate medical summary');
     }
   }
