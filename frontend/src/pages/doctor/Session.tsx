@@ -17,6 +17,8 @@ export default function DoctorSession() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [activeTab, setActiveTab] = useState<"summary" | "documents">("documents");
   const [activeDoc, setActiveDoc] = useState<DocumentItem | null>(null);
+  const [summaries, setSummaries] = useState<{ [docId: string]: string }>({});
+  const [generating, setGenerating] = useState(false);
 
   // countdown / expiry handling
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
@@ -66,6 +68,34 @@ export default function DoctorSession() {
     const res = await axios.get(`${API}/api/documents/${sessionId}`);
     // backend returns array of objects { id, url, type }
     setDocuments(res.data.data || []);
+  };
+
+  const generateSummary = async () => {
+    if (documents.length === 0) {
+      window.dispatchEvent(new CustomEvent("toast", { detail: { message: "No documents to summarize", type: "error" } }));
+      return;
+    }
+
+    setGenerating(true);
+    const newSummaries: { [docId: string]: string } = {};
+
+    try {
+      for (const doc of documents) {
+        try {
+          const res = await axios.post(`${API}/api/documents/${doc.id}/summarize`);
+          newSummaries[doc.id] = res.data.data.summary;
+        } catch (err: any) {
+          console.error(`Failed to summarize document ${doc.id}:`, err);
+          newSummaries[doc.id] = "Error generating summary. Please try again.";
+        }
+      }
+      setSummaries(newSummaries);
+      window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Summaries generated successfully", type: "success" } }));
+    } catch (err) {
+      window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Failed to generate summaries", type: "error" } }));
+    } finally {
+      setGenerating(false);
+    }
   };
 
 
@@ -180,9 +210,26 @@ export default function DoctorSession() {
       {activeTab === "summary" && (
         <div className="card" style={{ marginTop: 24 }}>
           <h3>AI Medical Summary</h3>
-          <button className="btn btn-primary" style={{ marginTop: 12 }}>
-            Generate AI Summary
+          <button
+            className="btn btn-primary"
+            style={{ marginTop: 12 }}
+            onClick={generateSummary}
+            disabled={generating}
+          >
+            {generating ? "Generating..." : "Generate AI Summary"}
           </button>
+          {Object.keys(summaries).length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              {documents.map((doc) => (
+                summaries[doc.id] && (
+                  <div key={doc.id} style={{ marginBottom: 16, padding: 12, border: "1px solid #e5e7eb", borderRadius: 8 }}>
+                    <strong>{inferType(doc)}</strong>
+                    <div style={{ whiteSpace: "pre-line", marginTop: 8 }}>{summaries[doc.id]}</div>
+                  </div>
+                )
+              ))}
+            </div>
+          )}
         </div>
       )}
 

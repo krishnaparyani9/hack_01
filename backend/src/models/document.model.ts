@@ -30,6 +30,11 @@ const documentSchema = new mongoose.Schema(
       type: String,
       enum: ["doctor", "patient"],
     },
+
+    // AI-generated summary (optional, populated after summarization)
+    summary: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
