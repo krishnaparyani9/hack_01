@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import cloudinary from "../config/cloudinary";
 import Document from "../models/document.model";
 import { getSession } from "../utils/sessionStore";
+import { OCRService } from "../utils/ocr.service";
+import { LLMService } from "../services/llm.service";
 
 /**
  * Upload document via QR session (doctor upload)
@@ -320,6 +322,74 @@ export const getDocumentsByPatientController = async (
       createdAt: d.createdAt,
     })),
   });
+};
+
+/**
+ * Summarize a document using OCR and LLM (patients and doctors can trigger)
+ */
+export const summarizeDocumentController = async (req: Request, res: Response) => {
+  const id = req.params.id as string;
+
+  console.log(`Summarize request for document ID: ${id}`);
+
+  if (!id) return res.status(400).json({ message: "Invalid request: missing document ID" });
+
+  const auth = (req as any).user as { userId?: string; role?: string } | undefined;
+  if (!auth) return res.status(401).json({ message: "Authentication required" });
+
+  try {
+    console.log('Step 1: Fetching document from DB');
+    const doc = await Document.findById(id);
+    if (!doc) {
+      console.log('Step 1: Document not found');
+      return res.status(404).json({ message: "Document not found" });
+    }
+    console.log('Step 1: Document fetched successfully');
+
+    // Authorization: Patients can summarize their own docs; doctors can summarize any (for sessions)
+    if (auth.role === "patient" && String(doc.patientId) !== String(auth.userId)) {
+      console.log('Step 1: Authorization failed');
+      return res.status(403).json({ message: "Forbidden: cannot summarize another patient's document" });
+    }
+    console.log('Step 1: Authorization passed');
+
+    // Step 2: Extract text using OCR
+    console.log('Step 2: Starting OCR extraction');
+    let rawText: string;
+    let cleanedText: string;
+    try {
+      rawText = await OCRService.extractText(doc.url);
+      console.log(`Step 2: OCR completed, raw text length: ${rawText.length}`);
+      cleanedText = OCRService.cleanText(rawText);
+      console.log(`Step 2: Text cleaned, cleaned text length: ${cleanedText.length}`);
+    } catch (error) {
+      console.error('Step 2: OCR extraction failed:', error);
+      return res.status(500).json({ message: 'Failed to extract text from document.' });
+    }
+
+    // Step 3: Generate summary using LLM
+    console.log('Step 3: Starting LLM summarization');
+    const llmService = new LLMService();
+    const summary = await llmService.generateSummary(cleanedText);
+    console.log('Step 3: LLM summarization completed');
+
+    // Step 4: Update document with summary
+    console.log('Step 4: Updating document with summary');
+    doc.summary = summary;
+    await doc.save();
+    console.log('Step 4: Document updated successfully');
+
+    return res.status(200).json({
+      message: "Document summarized successfully",
+      data: {
+        id: doc._id,
+        summary: doc.summary,
+      },
+    });
+  } catch (err) {
+    console.error("Failed to summarize document:", err);
+    return res.status(500).json({ message: "Failed to summarize document" });
+  }
 };
 
 /**
