@@ -1,9 +1,73 @@
 import { Request, Response } from "express";
+import type { Document as MongooseDocument } from "mongoose";
 import cloudinary from "../config/cloudinary";
 import Document from "../models/document.model";
 import { getSession } from "../utils/sessionStore";
 import { OCRService } from "../utils/ocr.service";
 import { LLMService } from "../services/llm.service";
+
+type DocumentEntity = MongooseDocument & {
+  patientId: string;
+  url: string;
+  type?: string;
+  summary?: string | null;
+  uploadedByName?: string | null;
+  uploadedByRole?: string | null;
+  createdAt?: Date;
+};
+
+class DocumentSummarizationError extends Error {
+  constructor(
+    public readonly code: "OCR_FAILED" | "LLM_FAILED",
+    message: string,
+    public readonly documentId?: string,
+    cause?: unknown
+  ) {
+    super(message);
+    this.name = "DocumentSummarizationError";
+    if (cause !== undefined) {
+      (this as any).cause = cause;
+    }
+  }
+}
+
+const summarizeDocumentWithLLM = async (
+  doc: DocumentEntity,
+  llmService: LLMService
+): Promise<string> => {
+  let rawText: string;
+
+  try {
+    rawText = await OCRService.extractText(doc.url);
+    console.log(`Summarization: OCR completed for document ${doc._id}`);
+  } catch (error) {
+    console.error(`Summarization: OCR failed for document ${doc._id}`, error);
+    throw new DocumentSummarizationError(
+      "OCR_FAILED",
+      "Failed to extract text from document.",
+      String(doc._id),
+      error
+    );
+  }
+
+  const cleanedText = OCRService.cleanText(rawText);
+
+  try {
+    const summary = await llmService.generateSummary(cleanedText);
+    doc.summary = summary;
+    await doc.save();
+    console.log(`Summarization: Summary stored for document ${doc._id}`);
+    return summary;
+  } catch (error) {
+    console.error(`Summarization: LLM failed for document ${doc._id}`, error);
+    throw new DocumentSummarizationError(
+      "LLM_FAILED",
+      "Failed to generate medical summary",
+      String(doc._id),
+      error
+    );
+  }
+};
 
 /**
  * Upload document via QR session (doctor upload)
@@ -338,57 +402,120 @@ export const summarizeDocumentController = async (req: Request, res: Response) =
   if (!auth) return res.status(401).json({ message: "Authentication required" });
 
   try {
-    console.log('Step 1: Fetching document from DB');
-    const doc = await Document.findById(id);
+    const doc = (await Document.findById(id)) as unknown as DocumentEntity | null;
     if (!doc) {
-      console.log('Step 1: Document not found');
+      console.log("Summarization: Document not found");
       return res.status(404).json({ message: "Document not found" });
     }
-    console.log('Step 1: Document fetched successfully');
 
-    // Authorization: Patients can summarize their own docs; doctors can summarize any (for sessions)
     if (auth.role === "patient" && String(doc.patientId) !== String(auth.userId)) {
-      console.log('Step 1: Authorization failed');
+      console.log("Summarization: Authorization failed for patient");
       return res.status(403).json({ message: "Forbidden: cannot summarize another patient's document" });
     }
-    console.log('Step 1: Authorization passed');
 
-    // Step 2: Extract text using OCR
-    console.log('Step 2: Starting OCR extraction');
-    let rawText: string;
-    let cleanedText: string;
-    try {
-      rawText = await OCRService.extractText(doc.url);
-      console.log(`Step 2: OCR completed, raw text length: ${rawText.length}`);
-      cleanedText = OCRService.cleanText(rawText);
-      console.log(`Step 2: Text cleaned, cleaned text length: ${cleanedText.length}`);
-    } catch (error) {
-      console.error('Step 2: OCR extraction failed:', error);
-      return res.status(500).json({ message: 'Failed to extract text from document.' });
-    }
-
-    // Step 3: Generate summary using LLM
-    console.log('Step 3: Starting LLM summarization');
     const llmService = new LLMService();
-    const summary = await llmService.generateSummary(cleanedText);
-    console.log('Step 3: LLM summarization completed');
-
-    // Step 4: Update document with summary
-    console.log('Step 4: Updating document with summary');
-    doc.summary = summary;
-    await doc.save();
-    console.log('Step 4: Document updated successfully');
+    const summary = await summarizeDocumentWithLLM(doc, llmService);
 
     return res.status(200).json({
       message: "Document summarized successfully",
       data: {
         id: doc._id,
-        summary: doc.summary,
+        summary,
       },
     });
   } catch (err) {
+    if (err instanceof DocumentSummarizationError) {
+      if (err.code === "OCR_FAILED") {
+        return res.status(500).json({ message: "Failed to extract text from document." });
+      }
+      console.error("Failed to summarize document via LLM:", err);
+      return res.status(500).json({ message: "Failed to generate medical summary" });
+    }
+
     console.error("Failed to summarize document:", err);
     return res.status(500).json({ message: "Failed to summarize document" });
+  }
+};
+
+/**
+ * Generate a unified AI summary across all documents for a patient.
+ */
+export const summarizePatientDocumentsController = async (req: Request, res: Response) => {
+  const patientId = req.params.patientId as string;
+
+  if (!patientId) {
+    return res.status(400).json({ message: "Invalid request: missing patient ID" });
+  }
+
+  const auth = (req as any).user as { userId?: string; role?: string } | undefined;
+  if (!auth) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+
+  if (auth.role === "patient" && String(auth.userId) !== String(patientId)) {
+    return res.status(403).json({ message: "Forbidden: cannot summarize another patient's documents" });
+  }
+
+  if (auth.role !== "patient" && auth.role !== "doctor") {
+    return res.status(403).json({ message: "Forbidden: insufficient role" });
+  }
+
+  const docs = (await Document.find({ patientId }).sort({ createdAt: 1 })) as unknown as DocumentEntity[];
+
+  if (docs.length === 0) {
+    return res.status(404).json({ message: "No documents found for patient" });
+  }
+
+  const llmService = new LLMService();
+  const preparedSummaries: Array<{ title: string; summary: string }> = [];
+  const failedDocumentIds: string[] = [];
+
+  for (const doc of docs) {
+    const title = doc.type || `Document ${preparedSummaries.length + 1}`;
+    let summaryText = (doc.summary || "").trim();
+
+    if (!summaryText) {
+      try {
+        summaryText = await summarizeDocumentWithLLM(doc, llmService);
+      } catch (error) {
+        failedDocumentIds.push(String(doc._id));
+        if (error instanceof DocumentSummarizationError) {
+          console.error(
+            `Aggregate summary: failed to summarize document ${doc._id} (${error.code})`,
+            error
+          );
+        } else {
+          console.error(`Aggregate summary: unexpected error summarizing document ${doc._id}`, error);
+        }
+        continue;
+      }
+    }
+
+    if (summaryText) {
+      preparedSummaries.push({ title, summary: summaryText });
+    }
+  }
+
+  if (preparedSummaries.length === 0) {
+    return res.status(500).json({ message: "Failed to summarize patient documents" });
+  }
+
+  try {
+    const aggregateSummary = await llmService.generateAggregateSummary(preparedSummaries);
+    return res.status(200).json({
+      message: "Patient documents summarized successfully",
+      data: {
+        patientId,
+        documentCount: docs.length,
+        summarizedCount: preparedSummaries.length,
+        failedDocumentIds,
+        summary: aggregateSummary,
+        generatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("Failed to generate aggregate summary:", error);
+    return res.status(500).json({ message: "Failed to generate patient summary" });
   }
 };
 

@@ -17,7 +17,7 @@ export default function Landing() {
         <div className="landing-grid">
           <div className="auth-hero landing-hero">
             <div style={{ maxWidth: 720 }}>
-              <h1>HealthVault — Secure medical records, shared simply.</h1>
+              <h1>HealthKey — Secure medical records, shared simply.</h1>
               <p style={{ color: 'var(--text-muted)', marginTop: 12, fontSize: 16 }}>
                 Control your medical documents, share access temporarily with clinicians,
                 and keep critical emergency details available when it matters most.

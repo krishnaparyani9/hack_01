@@ -27,10 +27,9 @@ export class LLMService {
    * @returns Promise<string> - Structured bullet-point summary.
    */
   async generateSummary(text: string): Promise<string> {
-    try {
-      console.log('LLM: Generating summary for text length:', text.length);
+    console.log('LLM: Generating summary for text length:', text.length);
 
-      const prompt = `
+    const prompt = `
 You are a medical summarization assistant. Your task is to create a concise, doctor-friendly summary of the provided medical document text.
 
 IMPORTANT RULES:
@@ -49,6 +48,50 @@ ${text}
 Summary:
 `;
 
+    return this.requestSummary(prompt, 'document summary', 'Failed to generate medical summary');
+  }
+
+  /**
+   * Generates an aggregated summary across multiple document-level summaries for a single patient.
+   * @param documents - Array of pre-generated document summaries with optional titles.
+   */
+  async generateAggregateSummary(documents: Array<{ title?: string; summary: string }>): Promise<string> {
+    if (!documents?.length) {
+      throw new Error('No document summaries provided for aggregation');
+    }
+
+    console.log('LLM: Generating aggregate summary for document count:', documents.length);
+
+    const compiled = documents
+      .map((entry, index) => {
+        const heading = entry.title?.trim() || `Document ${index + 1}`;
+        return `Document ${index + 1} — ${heading}:
+${entry.summary}`;
+      })
+      .join('\n\n');
+
+    const prompt = `
+You are a medical summarization assistant. You will receive AI-generated summaries from multiple medical documents belonging to the same patient. Combine them into a single, cohesive report.
+
+IMPORTANT RULES:
+- Synthesize overlapping findings and highlight trends across documents.
+- ONLY use information present in the provided summaries.
+- DO NOT invent new diagnoses, treatments, or prognoses.
+- Organize output into: Overall Status, Key Diagnoses, Abnormal Labs, Medications, Critical Alerts.
+- Limit each section to at most three concise bullets; omit sections without data.
+- If no meaningful findings exist, respond with "No significant findings across the provided records.".
+
+Patient Document Summaries:
+${compiled}
+
+Unified Summary:
+`;
+
+    return this.requestSummary(prompt, 'aggregate summary', 'Failed to generate patient summary');
+  }
+
+  private async requestSummary(prompt: string, operation: string, failureMessage: string): Promise<string> {
+    try {
       const response = await this.client.chat.completions.create({
         model: this.model,
         messages: [
@@ -68,10 +111,10 @@ Summary:
         throw new Error('LLM returned an empty summary');
       }
 
-      console.log('LLM: Summary generated successfully');
+      console.log(`LLM (${operation}): Summary generated successfully`);
       return summary;
     } catch (error) {
-      console.error('Error generating summary with LLM:', error);
+      console.error(`Error generating ${operation} with LLM:`, error);
 
       const status = (error as { status?: number })?.status;
       const code = (error as { code?: string })?.code;
@@ -85,7 +128,7 @@ Summary:
         throw new Error(`Groq model ${this.model} is deprecated; update GROQ_MODEL to a supported model (see console.groq.com/docs/models).`);
       }
 
-      throw new Error('Failed to generate medical summary');
+      throw new Error(failureMessage);
     }
   }
 }

@@ -40,7 +40,7 @@ const Login = () => {
       <div className="auth-hero">
         <div style={{ maxWidth: 640 }}>
           <h1>Welcome back 👋</h1>
-          <p>HealthVault helps you securely store, share, and control access to medical records. Sign in to access your records, share QR codes with doctors, and manage emergency info.</p>
+          <p>HealthKey helps you securely store, share, and control access to medical records. Sign in to access your records, share QR codes with doctors, and manage emergency info.</p>
 
           <div style={{ display: "grid", gap: 8, marginTop: 18 }}>
             <div className="card" style={{ padding: 12 }}>
@@ -61,9 +61,9 @@ const Login = () => {
       <div className="auth-card card">
         <ThemeToggle className="auth-theme-toggle" ariaLabel="Toggle dark mode" />
         <div className="auth-brand">
-          <div className="auth-logo">HV</div>
+          <div className="auth-logo">HK</div>
           <div>
-            <div style={{ fontWeight: 800 }}>HealthVault</div>
+            <div style={{ fontWeight: 800 }}>HealthKey</div>
             <div className="auth-small">Welcome back — sign in to continue</div>
           </div>
         </div>

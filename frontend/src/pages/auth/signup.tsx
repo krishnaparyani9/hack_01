@@ -64,7 +64,7 @@ export default function Signup() {
       </div>
       <div className="auth-hero">
         <div style={{ maxWidth: 640 }}>
-          <h1>Create your HealthVault</h1>
+          <h1>Create your HealthKey</h1>
           <p>Securely store and share medical records with doctors. Your data stays private and you control who can view it with time-bound QR sharing.</p>
 
           <div style={{ display: "grid", gap: 8, marginTop: 18 }}>
@@ -84,9 +84,9 @@ export default function Signup() {
       <div className="auth-card card">
         <ThemeToggle className="auth-theme-toggle" ariaLabel="Toggle dark mode" />
         <div className="auth-brand">
-          <div className="auth-logo">HV</div>
+          <div className="auth-logo">HK</div>
           <div>
-            <div style={{ fontWeight: 800 }}>HealthVault</div>
+            <div style={{ fontWeight: 800 }}>HealthKey</div>
             <div className="auth-small">Create an account to get started</div>
           </div>
         </div>

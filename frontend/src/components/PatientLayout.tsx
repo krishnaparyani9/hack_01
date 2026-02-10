@@ -74,7 +74,7 @@ const PatientLayout = ({ children }: { children: React.ReactNode }) => {
     <div className="layout">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <h2>HealthVault</h2>
+          <h2>HealthKey</h2>
 
           <div className="profile">
             <div className="avatar-wrap">
