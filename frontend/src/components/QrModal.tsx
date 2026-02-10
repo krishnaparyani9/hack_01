@@ -40,7 +40,7 @@ export default function QrModal({ token, onClose }: Props) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `healthvault-qr-${Date.now()}.svg`;
+        a.download = `healthkey-qr-${Date.now()}.svg`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -55,7 +55,7 @@ export default function QrModal({ token, onClose }: Props) {
       const dataUrl = canvas.toDataURL(mime);
       const a = document.createElement("a");
       a.href = dataUrl;
-      a.download = `healthvault-qr-${Date.now()}.${format}`;
+      a.download = `healthkey-qr-${Date.now()}.${format}`;
       document.body.appendChild(a);
       a.click();
       a.remove();

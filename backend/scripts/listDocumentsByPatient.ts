@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const MONGO = process.env.MONGO_URI || "mongodb://localhost:27017/healthvault";
+const MONGO = process.env.MONGO_URI || "mongodb://localhost:27017/healthkey";
 
 async function main() {
   await mongoose.connect(MONGO);

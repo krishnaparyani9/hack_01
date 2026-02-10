@@ -7,6 +7,7 @@ import {
   deleteDocumentController,
   uploadDocumentByPatientJsonController, // <-- new
   summarizeDocumentController,
+  summarizePatientDocumentsController,
 } from "../controllers/document.controller";
 import { upload } from "../middleware/upload";
 import { authMiddleware, requireAuth } from "../middleware/auth.middleware";
@@ -32,6 +33,13 @@ router.get(
   "/patient/:patientId",
   // authMiddleware,  // intentionally not required
   getDocumentsByPatientController
+);
+
+router.post(
+  "/patient/:patientId/summary",
+  authMiddleware,
+  requireAuth,
+  summarizePatientDocumentsController
 );
 
 /**

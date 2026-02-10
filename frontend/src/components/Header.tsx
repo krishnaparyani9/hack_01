@@ -6,7 +6,7 @@ export default function Header() {
     <header className="site-header" role="banner">
       <div className="container" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12}}>
         <Link to="/" className="brand">
-          <span className="logo">HealthVault</span>
+          <span className="logo">HealthKey</span>
         </Link>
 
         <nav aria-label="Main navigation" style={{ display: "flex", alignItems: "center", gap: 12 }}>
