@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import DocumentModal from "../../components/DocumentModal";
+import TiltCard from "../../components/TiltCard";
 
 const API = "http://localhost:5000";
 
@@ -17,6 +18,7 @@ export default function DoctorSession() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [activeTab, setActiveTab] = useState<"summary" | "documents">("documents");
   const [activeDoc, setActiveDoc] = useState<DocumentItem | null>(null);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [summaries, setSummaries] = useState<{ [docId: string]: string }>({});
   const [generating, setGenerating] = useState(false);
 
@@ -68,6 +70,8 @@ export default function DoctorSession() {
     const res = await axios.get(`${API}/api/documents/${sessionId}`);
     // backend returns array of objects { id, url, type }
     setDocuments(res.data.data || []);
+    const first = (res.data.data || [])[0];
+    if (first?.id && !selectedDocId) setSelectedDocId(first.id);
   };
 
   const generateSummary = async () => {
@@ -102,6 +106,8 @@ export default function DoctorSession() {
 
   const getSafeUrl = (url: string) =>
     /^(https?:|data:|blob:)/i.test(url) ? url : `https://${url}`;
+
+  const selectedDoc = documents.find((d) => d.id === selectedDocId) || null;
 
   const inferType = (doc: DocumentItem) => {
     if (doc.type) return doc.type.toUpperCase();
@@ -162,136 +168,156 @@ export default function DoctorSession() {
 
 
   return (
-    <div className="main" style={{ maxWidth: 900, margin: "0 auto" }}>
-      <h2>Doctor Consultation</h2>
-
-      {/* ACCESS BADGE */}
-      <span
-        style={{
-          padding: "4px 12px",
-          borderRadius: 999,
-          fontSize: 12,
-          fontWeight: 600,
-          background: accessType === "write" ? "#dcfce7" : "#fee2e2",
-          color: accessType === "write" ? "#166534" : "#991b1b",
-        }}
-      >
-        {accessType.toUpperCase()}
-      </span>
-
-      {/* countdown */}
-      <span style={{ marginLeft: 12, fontSize: 13, color: "var(--text-muted)", fontWeight: 600 }}>
-        {expiresAt ? formatCountdown(timeLeft) : ""}
-      </span>
-
-      {/* TABS */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 24 }}>
-        <div style={{ display: "flex", gap: 12 }}>
-          <button
-            className={activeTab === "summary" ? "btn btn-primary" : "btn"}
-            onClick={() => setActiveTab("summary")}
-          >
-            Summary
-          </button>
-          <button
-            className={activeTab === "documents" ? "btn btn-primary" : "btn"}
-            onClick={() => setActiveTab("documents")}
-          >
-            Documents
-          </button>
+    <div className="main" style={{ maxWidth: 1100, margin: "0 auto" }}>
+      <div className="hk-session-header">
+        <div className="hk-session-title">
+          <h2>Consultation Session</h2>
+          <div className="muted">Session-based access to patient records (time-limited).</div>
         </div>
 
-        {accessType === "write" && sessionId && (
-          <a className="btn btn-primary" href={`/doctor/session/${sessionId}/upload`} style={{ whiteSpace: "nowrap" }}>Upload Document</a>
-        )}
+        <div className="hk-session-meta">
+          <span className={`hk-badge ${accessType === "write" ? "hk-badge--write" : "hk-badge--view"}`}>{accessType.toUpperCase()}</span>
+          {expiresAt ? <span className="hk-badge">Time left: {formatCountdown(timeLeft)}</span> : null}
+          {sessionId ? <span className="hk-badge">Session: {sessionId}</span> : null}
+          {accessType === "write" && sessionId && (
+            <a className="btn btn-primary" href={`/doctor/session/${sessionId}/upload`} style={{ whiteSpace: "nowrap" }}>
+              Upload Document
+            </a>
+          )}
+        </div>
       </div>
 
-      {/* SUMMARY */}
-      {activeTab === "summary" && (
-        <div className="card" style={{ marginTop: 24 }}>
-          <h3>AI Medical Summary</h3>
-          <button
-            className="btn btn-primary"
-            style={{ marginTop: 12 }}
-            onClick={generateSummary}
-            disabled={generating}
-          >
-            {generating ? "Generating..." : "Generate AI Summary"}
-          </button>
-          {Object.keys(summaries).length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              {documents.map((doc) => (
-                summaries[doc.id] && (
-                  <div key={doc.id} style={{ marginBottom: 16, padding: 12, border: "1px solid #e5e7eb", borderRadius: 8 }}>
-                    <strong>{inferType(doc)}</strong>
-                    <div style={{ whiteSpace: "pre-line", marginTop: 8 }}>{summaries[doc.id]}</div>
-                  </div>
-                )
-              ))}
-            </div>
-          )}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <button className={activeTab === "documents" ? "btn btn-primary" : "btn"} onClick={() => setActiveTab("documents")}>
+          Documents
+        </button>
+        <button className={activeTab === "summary" ? "btn btn-primary" : "btn"} onClick={() => setActiveTab("summary")}>
+          AI Summary
+        </button>
+      </div>
+
+      {activeTab === "documents" && (
+        <div className="hk-split">
+          <TiltCard className="card" tiltMaxDeg={5}>
+            <h3>Shared documents</h3>
+            <p className="muted">Select a document to preview. Use “Open” to view in a new tab.</p>
+
+            {documents.length === 0 ? (
+              <div className="card" style={{ marginTop: 14 }}>
+                <p className="muted">No documents uploaded yet.</p>
+              </div>
+            ) : (
+              <div className="hk-doc-list" style={{ marginTop: 14 }}>
+                {documents.map((doc) => {
+                  const active = doc.id === selectedDocId;
+                  return (
+                    <div
+                      key={doc.id}
+                      className={`hk-doc-item ${active ? "active" : ""}`}
+                      onClick={() => setSelectedDocId(doc.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") setSelectedDocId(doc.id);
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                        <div>
+                          <div style={{ fontWeight: 900 }}>{inferType(doc)}</div>
+                          <div className="muted" style={{ marginTop: 6 }}>
+                            {doc.uploadedByName ? `Uploaded by ${doc.uploadedByName}` : "Uploaded"}
+                            {doc.createdAt ? ` • ${new Date(doc.createdAt).toLocaleString()}` : ""}
+                          </div>
+                        </div>
+                        <span className="doc-badge">{doc.type}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </TiltCard>
+
+          <TiltCard className="card hk-preview" tiltMaxDeg={4}>
+            <h3>Preview</h3>
+            {selectedDoc ? (
+              <>
+                <div className="muted" style={{ marginBottom: 12 }}>
+                  {selectedDoc.type} • {selectedDoc.uploadedByRole ? `Uploader: ${selectedDoc.uploadedByRole}` : ""}
+                </div>
+                <div className="hk-preview-frame">
+                  {getSafeUrl(selectedDoc.url).startsWith("data:image") || /\.(png|jpg|jpeg)$/i.test(getSafeUrl(selectedDoc.url)) ? (
+                    <img src={getSafeUrl(selectedDoc.url)} alt="Document preview" />
+                  ) : (
+                    <iframe title="Document preview" src={getSafeUrl(selectedDoc.url)} />
+                  )}
+                </div>
+
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() =>
+                      setActiveDoc({
+                        id: selectedDoc.id,
+                        url: getSafeUrl(selectedDoc.url),
+                        type: selectedDoc.type,
+                        uploadedByName: selectedDoc.uploadedByName,
+                        uploadedByRole: selectedDoc.uploadedByRole,
+                        createdAt: selectedDoc.createdAt,
+                      })
+                    }
+                  >
+                    Fullscreen
+                  </button>
+                  <a className="btn btn-primary" href={getSafeUrl(selectedDoc.url)} target="_blank" rel="noreferrer">
+                    Open
+                  </a>
+                </div>
+              </>
+            ) : (
+              <div className="card" style={{ marginTop: 14 }}>
+                <p className="muted">Select a document to preview.</p>
+              </div>
+            )}
+          </TiltCard>
         </div>
       )}
 
-      {/* DOCUMENTS */}
-      {activeTab === "documents" && (
-        <div className="card" style={{ marginTop: 24 }}>
-          <h3>Shared Documents</h3>
+      {activeTab === "summary" && (
+        <TiltCard className="card" tiltMaxDeg={4}>
+          <h3>AI Medical Summary</h3>
+          <p className="muted">Generates structured summaries derived only from the document text content.</p>
+          <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={generateSummary} disabled={generating}>
+            {generating ? "Generating…" : "Generate AI Summary"}
+          </button>
 
-          {documents.length === 0 && (
-            <p style={{ color: "var(--text-muted)" }}>
-              No documents uploaded yet.
-            </p>
-          )}
-
-          <div className="scroll-list" style={{ marginTop: 16 }}>
-            {documents.map((doc, i) => (
-              <div
-                key={doc.id || i}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: 14,
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 12,
-                  marginBottom: 10,
-                }}
-              >
-                <div>
-                  <strong>{inferType(doc)}</strong>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>
-                    {doc.type} • {doc.uploadedByName ? `Uploaded by ${doc.uploadedByName}` : "Uploaded"} • {doc.createdAt ? new Date(doc.createdAt).toLocaleString() : ""}
+          {Object.keys(summaries).length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              {documents.map((doc) =>
+                summaries[doc.id] ? (
+                  <div key={doc.id} className="card" style={{ marginBottom: 12, background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                      <strong>{inferType(doc)}</strong>
+                      <span className="doc-badge">{doc.type}</span>
+                    </div>
+                    <div style={{ whiteSpace: "pre-line", marginTop: 10, lineHeight: 1.65 }}>{summaries[doc.id]}</div>
                   </div>
-                </div>
-
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => setActiveDoc({ id: doc.id, url: getSafeUrl(doc.url), type: doc.type, uploadedByName: doc.uploadedByName, uploadedByRole: doc.uploadedByRole, createdAt: doc.createdAt })}
-                  >
-                    View
-                  </button>
-                  <a href={getSafeUrl(doc.url)} target="_blank" rel="noreferrer" className="btn btn-primary">Open</a>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* UPLOAD (WRITE ONLY) */}
-
-
-          {activeDoc && (
-            <DocumentModal
-              url={activeDoc.url}
-              title={`Shared — ${activeDoc.type}`}
-              uploadedByName={activeDoc.uploadedByName}
-              uploadedByRole={activeDoc.uploadedByRole}
-              createdAt={activeDoc.createdAt}
-              onClose={() => setActiveDoc(null)}
-            />
+                ) : null
+              )}
+            </div>
           )}
-        </div>
+        </TiltCard>
+      )}
+
+      {activeDoc && (
+        <DocumentModal
+          url={activeDoc.url}
+          title={`Shared — ${activeDoc.type}`}
+          uploadedByName={activeDoc.uploadedByName}
+          uploadedByRole={activeDoc.uploadedByRole}
+          createdAt={activeDoc.createdAt}
+          onClose={() => setActiveDoc(null)}
+        />
       )}
     </div>
   );

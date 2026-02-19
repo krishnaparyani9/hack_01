@@ -60,6 +60,13 @@ const PatientLayout = ({ children }: { children: React.ReactNode }) => {
     return () => document.removeEventListener("keydown", onKey);
   }, [showEditor]);
 
+  // allow pages (e.g., Emergency) to open editor without prop drilling
+  useEffect(() => {
+    const onOpen = () => setShowEditor(true);
+    window.addEventListener("patient-open-editor", onOpen);
+    return () => window.removeEventListener("patient-open-editor", onOpen);
+  }, []);
+
   const isActive = (path: string) =>
     location.pathname === path ? "active" : "";
 

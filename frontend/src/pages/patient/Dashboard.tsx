@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import AISummaryModal from "../../components/AISummaryModal";
 import PatientLayout from "../../components/PatientLayout";
+import TiltCard from "../../components/TiltCard";
 
 const API = "http://localhost:5000";
 
@@ -15,10 +16,15 @@ type PatientSummaryState = {
 };
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [summaryData, setSummaryData] = useState<PatientSummaryState | null>(null);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+
+  const [docCount, setDocCount] = useState<number>(0);
+  const [activeSession, setActiveSession] = useState<null | { sessionId: string; expiresAt?: number; accessType?: "view" | "write" }>(null);
+  const [emergencyReady, setEmergencyReady] = useState<boolean>(false);
 
   const modules = useMemo(
     () => [
@@ -46,6 +52,53 @@ const Dashboard = () => {
     ],
     []
   );
+
+  useEffect(() => {
+    let mounted = true;
+
+    const load = async () => {
+      const patientId = localStorage.getItem("patientId") || localStorage.getItem("userId") || "";
+      if (!patientId) return;
+
+      try {
+        const docsRes = await axios.get(`${API}/api/documents/patient/${patientId}`);
+        if (mounted) setDocCount((docsRes.data?.data || []).length);
+      } catch {
+        if (mounted) setDocCount(0);
+      }
+
+      try {
+        const sid = localStorage.getItem("sessionId");
+        if (!sid) {
+          if (mounted) setActiveSession(null);
+        } else {
+          const sessRes = await axios.get(`${API}/api/session/${sid}`);
+          const data = sessRes.data?.data;
+          if (data?.sessionId) {
+            if (mounted) setActiveSession({ sessionId: data.sessionId, expiresAt: data.expiresAt, accessType: data.accessType });
+          } else {
+            if (mounted) setActiveSession(null);
+          }
+        }
+      } catch {
+        if (mounted) setActiveSession(null);
+      }
+
+      try {
+        const pRes = await axios.get(`${API}/api/patients/${patientId}`);
+        const emergency = pRes.data?.data?.emergency;
+        const ready = !!(emergency && (emergency.bloodGroup || (emergency.allergies && emergency.allergies.length) || (emergency.medications && emergency.medications.length) || (emergency.chronicConditions && emergency.chronicConditions.length) || emergency.emergencyContact));
+        if (mounted) setEmergencyReady(ready);
+      } catch {
+        if (mounted) setEmergencyReady(false);
+      }
+    };
+
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleGenerateSummary = async () => {
     const token = localStorage.getItem("authToken");
@@ -104,6 +157,50 @@ const Dashboard = () => {
         <p className="dashboard-kicker">Care Portal</p>
         <h2>Patient Dashboard</h2>
         <p className="dashboard-subhead">Track your health records, share access, and keep critical information ready.</p>
+      </section>
+
+      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+        <TiltCard className="card" tiltMaxDeg={6}>
+          <h3 style={{ marginBottom: 8 }}>Total Documents</h3>
+          <div style={{ fontSize: 34, fontWeight: 900, lineHeight: 1 }}>{docCount}</div>
+          <div className="muted">Uploaded records linked to your profile</div>
+          <div style={{ marginTop: 14 }}>
+            <button className="btn btn-secondary" onClick={() => navigate("/patient/documents")}>Upload document</button>
+          </div>
+        </TiltCard>
+
+        <TiltCard className="card" tiltMaxDeg={6}>
+          <h3 style={{ marginBottom: 8 }}>Sharing Session</h3>
+          {activeSession?.sessionId ? (
+            <>
+              <div className="hk-badge hk-badge--write" style={{ marginBottom: 10 }}>
+                ACTIVE • {(activeSession.accessType || "view").toUpperCase()}
+              </div>
+              <div className="muted">Session ID: {activeSession.sessionId}</div>
+              <div className="muted">Expires: {activeSession.expiresAt ? new Date(activeSession.expiresAt).toLocaleString() : "—"}</div>
+            </>
+          ) : (
+            <>
+              <div className="hk-badge hk-badge--view" style={{ marginBottom: 10 }}>No active session</div>
+              <div className="muted">Generate a QR to grant temporary access.</div>
+            </>
+          )}
+          <div style={{ marginTop: 14 }}>
+            <button className="btn btn-primary" onClick={() => navigate("/patient/generate-qr")}>Generate QR Session</button>
+          </div>
+        </TiltCard>
+
+        <TiltCard className="card" tiltMaxDeg={6}>
+          <h3 style={{ marginBottom: 8 }}>Emergency Profile</h3>
+          <div className={`hk-badge ${emergencyReady ? "hk-badge--write" : "hk-badge--view"}`} style={{ marginBottom: 10 }}>
+            {emergencyReady ? "READY" : "NOT SET"}
+          </div>
+          <div className="muted">Blood group, allergies, meds, and emergency contact</div>
+          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button className="btn btn-secondary" onClick={() => navigate("/patient/emergency")}>View</button>
+            <button className="btn" onClick={() => window.dispatchEvent(new Event("patient-open-editor"))}>Edit</button>
+          </div>
+        </TiltCard>
       </section>
 
       <section className="dashboard-tiles">
