@@ -1,6 +1,7 @@
 import PatientLayout from "../../components/PatientLayout";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import TiltCard from "../../components/TiltCard";
 
 const API = "http://localhost:5000";
 
@@ -59,36 +60,45 @@ const Emergency = () => {
 
   return (
     <PatientLayout>
-     
-        
+      <div className="page-header">
+        <div>
+          <div className="page-title">Emergency Profile</div>
+          <div className="muted">Critical details for urgent situations. Keep this accurate and easy to read.</div>
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button className="btn btn-secondary" onClick={() => window.print()}>Print</button>
+          <button className="btn btn-primary" onClick={() => window.dispatchEvent(new Event("patient-open-editor"))}>Edit Profile</button>
+        </div>
+      </div>
 
-        <div className="emergency-card">
-          <div className="emergency-card__header">
-            <h3>Critical Information</h3>
-            <span className={`emergency-card__status emergency-card__status--${status.tone}`}>
-              {status.label}
-            </span>
-          </div>
-
-          {loading ? (
-            <div className="emergency-card__state">Fetching the latest emergency details…</div>
-          ) : !emergency ? (
-            <div className="emergency-card__state">
-              No emergency profile yet. Use Edit Profile to add critical contacts and health notes.
-            </div>
-          ) : (
-            <dl className="emergency-list">
-              {rows.map(({ label, value }) => (
-                <div key={label} className="emergency-list__row">
-                  <dt>{label}</dt>
-                  <dd>{value || "—"}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
+      <TiltCard className="card" tiltMaxDeg={5}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <h3 style={{ margin: 0 }}>Critical Information</h3>
+          <span className={`hk-badge ${status.tone === "safe" ? "hk-badge--write" : "hk-badge--view"}`}>{status.label}</span>
         </div>
 
-       
+        {loading ? (
+          <div className="muted" style={{ marginTop: 12 }}>Fetching the latest emergency details…</div>
+        ) : !emergency ? (
+          <div style={{ marginTop: 14 }}>
+            <div className="muted">No emergency profile yet.</div>
+            <div className="card" style={{ marginTop: 14, background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+              <p className="muted" style={{ margin: 0 }}>
+                Add blood group, allergies, medications, chronic conditions, and an emergency contact. This is shown for quick access and can be printed.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+            {rows.map(({ label, value }) => (
+              <div key={label} className="card" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>{label}</div>
+                <div style={{ marginTop: 10, fontSize: 16, fontWeight: 800 }}>{value || "—"}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </TiltCard>
     </PatientLayout>
   );
 };
