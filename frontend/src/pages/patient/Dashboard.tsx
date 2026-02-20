@@ -34,6 +34,7 @@ const Dashboard = () => {
         to: "/patient/records",
         action: "View Records",
         icon: "🗂️",
+        color: "blue" as const,
       },
       {
         title: "QR Access",
@@ -41,6 +42,7 @@ const Dashboard = () => {
         to: "/patient/generate-qr",
         action: "Generate QR",
         icon: "🔐",
+        color: "teal" as const,
       },
       {
         title: "Emergency",
@@ -48,6 +50,7 @@ const Dashboard = () => {
         to: "/patient/emergency",
         action: "Open",
         icon: "🚨",
+        color: "red" as const,
       },
     ],
     []
@@ -153,102 +156,97 @@ const Dashboard = () => {
 
   return (
     <PatientLayout>
-      <section className="dashboard-hero">
-        <p className="dashboard-kicker">Care Portal</p>
-        <h2>Patient Dashboard</h2>
-        <p className="dashboard-subhead">Track your health records, share access, and keep critical information ready.</p>
-      </section>
+      <div className="app-ambient">
+        {/* ── Page header ── */}
+        <div className="app-header">
+          <span className="app-kicker">Care Portal</span>
+          <h2 className="app-title">Patient Dashboard</h2>
+          <p className="app-subtitle">Track your health records, share access, and keep critical information ready.</p>
+        </div>
 
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
-        <TiltCard className="card" tiltMaxDeg={6}>
-          <h3 style={{ marginBottom: 8 }}>Total Documents</h3>
-          <div style={{ fontSize: 34, fontWeight: 900, lineHeight: 1 }}>{docCount}</div>
-          <div className="muted">Uploaded records linked to your profile</div>
-          <div style={{ marginTop: 14 }}>
-            <button className="btn btn-secondary" onClick={() => navigate("/patient/documents")}>Upload document</button>
-          </div>
-        </TiltCard>
+        {/* ── Stat cards ── */}
+        <section className="app-stats">
+          <TiltCard className="app-stat-card" tiltMaxDeg={6}>
+            <div className="app-stat-card__accent" />
+            <div className="app-stat-card__icon">📄</div>
+            <h3 style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 700 }}>Total Documents</h3>
+            <div className="app-stat-card__value">{docCount}</div>
+            <p className="app-stat-card__label">Uploaded records linked to your profile</p>
+            <div style={{ marginTop: 16 }}>
+              <button className="btn btn-secondary" onClick={() => navigate("/patient/documents")}>Upload document</button>
+            </div>
+          </TiltCard>
 
-        <TiltCard className="card" tiltMaxDeg={6}>
-          <h3 style={{ marginBottom: 8 }}>Sharing Session</h3>
-          {activeSession?.sessionId ? (
-            <>
-              <div className="hk-badge hk-badge--write" style={{ marginBottom: 10 }}>
-                ACTIVE • {(activeSession.accessType || "view").toUpperCase()}
-              </div>
-              <div className="muted">Session ID: {activeSession.sessionId}</div>
-              <div className="muted">Expires: {activeSession.expiresAt ? new Date(activeSession.expiresAt).toLocaleString() : "—"}</div>
-            </>
-          ) : (
-            <>
-              <div className="hk-badge hk-badge--view" style={{ marginBottom: 10 }}>No active session</div>
-              <div className="muted">Generate a QR to grant temporary access.</div>
-            </>
-          )}
-          <div style={{ marginTop: 14 }}>
-            <button className="btn btn-primary" onClick={() => navigate("/patient/generate-qr")}>Generate QR Session</button>
-          </div>
-        </TiltCard>
+          <TiltCard className="app-stat-card" tiltMaxDeg={6}>
+            <div className="app-stat-card__accent app-stat-card__accent--teal" />
+            <div className="app-stat-card__icon app-stat-card__icon--teal">🔗</div>
+            <h3 style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 700 }}>Sharing Session</h3>
+            {activeSession?.sessionId ? (
+              <>
+                <span className="hk-badge hk-badge--write" style={{ marginBottom: 10 }}>
+                  ACTIVE • {(activeSession.accessType || "view").toUpperCase()}
+                </span>
+                <p className="app-stat-card__label">Session: {activeSession.sessionId}</p>
+                <p className="app-stat-card__label">Expires: {activeSession.expiresAt ? new Date(activeSession.expiresAt).toLocaleString() : "—"}</p>
+              </>
+            ) : (
+              <>
+                <span className="hk-badge hk-badge--view" style={{ marginBottom: 10 }}>No active session</span>
+                <p className="app-stat-card__label">Generate a QR to grant temporary access.</p>
+              </>
+            )}
+            <div style={{ marginTop: 16 }}>
+              <button className="btn btn-primary" onClick={() => navigate("/patient/generate-qr")}>Generate QR Session</button>
+            </div>
+          </TiltCard>
 
-        <TiltCard className="card" tiltMaxDeg={6}>
-          <h3 style={{ marginBottom: 8 }}>Emergency Profile</h3>
-          <div className={`hk-badge ${emergencyReady ? "hk-badge--write" : "hk-badge--view"}`} style={{ marginBottom: 10 }}>
-            {emergencyReady ? "READY" : "NOT SET"}
-          </div>
-          <div className="muted">Blood group, allergies, meds, and emergency contact</div>
-          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="btn btn-secondary" onClick={() => navigate("/patient/emergency")}>View</button>
-            <button className="btn" onClick={() => window.dispatchEvent(new Event("patient-open-editor"))}>Edit</button>
-          </div>
-        </TiltCard>
-      </section>
-
-      <section className="dashboard-tiles">
-        {modules.map((module) => (
-          <Link key={module.title} to={module.to} className="dashboard-tile">
-            <span className="dashboard-tile__icon" aria-hidden>
-              {module.icon}
+          <TiltCard className="app-stat-card" tiltMaxDeg={6}>
+            <div className="app-stat-card__accent app-stat-card__accent--red" />
+            <div className="app-stat-card__icon app-stat-card__icon--red">🚨</div>
+            <h3 style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 700 }}>Emergency Profile</h3>
+            <span className={`app-emergency-badge ${emergencyReady ? "app-emergency-badge--safe" : "app-emergency-badge--warn"}`}>
+              {emergencyReady ? "✓ Ready" : "Not Set"}
             </span>
-            <h3>{module.title}</h3>
-            <p>{module.description}</p>
-            <span className="dashboard-tile__cta">{module.action} →</span>
-          </Link>
-        ))}
-      </section>
+            <p className="app-stat-card__label" style={{ marginTop: 8 }}>Blood group, allergies, meds, and emergency contact</p>
+            <div style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="btn btn-secondary" onClick={() => navigate("/patient/emergency")}>View</button>
+              <button className="btn" onClick={() => window.dispatchEvent(new Event("patient-open-editor"))}>Edit</button>
+            </div>
+          </TiltCard>
+        </section>
 
-      <section className="dashboard-summary" style={{ marginTop: 28 }}>
-        <div
-          className="card"
-          style={{
-            background: "linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(56, 189, 248, 0.08))",
-            border: "1px solid rgba(37, 99, 235, 0.18)",
-            boxShadow: "0 18px 45px rgba(15, 23, 42, 0.12)",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 18, flexWrap: "wrap" }}>
-            <div style={{ flex: "1 1 320px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 28 }}>✨</span>
-                <div>
-                  <h3 style={{ margin: 0 }}>AI Patient Summary</h3>
-                  <p style={{ color: "var(--text-muted)", margin: "6px 0 0" }}>
-                    Generate a unified overview of all uploaded medical documents in seconds.
-                  </p>
-                </div>
-              </div>
+        {/* ── Navigation tiles ── */}
+        <section className="app-tiles">
+          {modules.map((module) => (
+            <Link key={module.title} to={module.to} className={`app-tile app-tile--${module.color}`}>
+              <span className="app-tile__icon" aria-hidden>{module.icon}</span>
+              <h3>{module.title}</h3>
+              <p>{module.description}</p>
+              <span className="app-tile__cta">{module.action} →</span>
+            </Link>
+          ))}
+        </section>
 
-              {summaryData?.failedCount ? (
-                <p style={{ color: "#b91c1c", marginTop: 14, fontSize: 13 }}>
-                  Unable to include {summaryData.failedCount} document{summaryData.failedCount === 1 ? "" : "s"} due to extraction errors.
+        {/* ── AI Summary ── */}
+        <section className="app-ai-banner">
+          <div className="app-ai-banner__inner">
+            <div className="app-ai-banner__info">
+              <div className="app-ai-banner__icon">✨</div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>AI Patient Summary</h3>
+                <p style={{ color: "var(--text-muted)", margin: "6px 0 0", fontSize: 14, lineHeight: 1.6 }}>
+                  Generate a unified overview of all uploaded medical documents in seconds.
                 </p>
-              ) : null}
-
-              {summaryError && (
-                <p style={{ color: "#b91c1c", marginTop: 14, fontSize: 13 }}>{summaryError}</p>
-              )}
+                {summaryData?.failedCount ? (
+                  <p style={{ color: "#b91c1c", marginTop: 12, fontSize: 13 }}>
+                    Unable to include {summaryData.failedCount} document{summaryData.failedCount === 1 ? "" : "s"} due to extraction errors.
+                  </p>
+                ) : null}
+                {summaryError && <p style={{ color: "#b91c1c", marginTop: 12, fontSize: 13 }}>{summaryError}</p>}
+              </div>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 220 }}>
+            <div className="app-ai-banner__actions">
               <button
                 className="btn btn-primary"
                 style={{ padding: "12px 18px", fontWeight: 600 }}
@@ -269,55 +267,54 @@ const Dashboard = () => {
               )}
 
               {summaryData?.generatedAt && (
-                <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
                   Updated {new Date(summaryData.generatedAt).toLocaleString()} • {summaryData.documentCount}/{summaryData.totalDocumentCount} documents included
                 </div>
               )}
             </div>
           </div>
-        </div>
-      </section>
-      {/* END SESSION */}
-      <div style={{ marginTop: 18 }}>
-        <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 8 }}>
-          Manage active QR session
-        </div>
-        <button
-          className="btn btn-secondary"
-          onClick={async () => {
-            const sid = localStorage.getItem("sessionId");
-            if (!sid) {
-              window.dispatchEvent(new CustomEvent("toast", { detail: { message: "No active session", type: "error" } }));
-              return;
-            }
+        </section>
 
-            try {
-              const token = localStorage.getItem("authToken");
-              await fetch(`${API}/api/session/${sid}`, {
-                method: "DELETE",
-                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-              });
-            } catch (e) {
-              // ignore
-            }
+        {/* ── Session management ── */}
+        <div className="app-session-bar">
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+            QR Session Management
+          </span>
+          <button
+            className="btn btn-secondary"
+            onClick={async () => {
+              const sid = localStorage.getItem("sessionId");
+              if (!sid) {
+                window.dispatchEvent(new CustomEvent("toast", { detail: { message: "No active session", type: "error" } }));
+                return;
+              }
+              try {
+                const token = localStorage.getItem("authToken");
+                await fetch(`${API}/api/session/${sid}`, {
+                  method: "DELETE",
+                  headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                });
+              } catch (e) {
+                // ignore
+              }
+              localStorage.removeItem("sessionId");
+              window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Session ended", type: "success" } }));
+              window.location.reload();
+            }}
+          >
+            End Active Session
+          </button>
+        </div>
 
-            localStorage.removeItem("sessionId");
-            window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Session ended", type: "success" } }));
-            window.location.reload();
-          }}
-        >
-          End Active Session
-        </button>
+        {showSummaryModal && summaryData && (
+          <AISummaryModal
+            summary={summaryData.summary}
+            documentCount={summaryData.documentCount}
+            generatedAt={summaryData.generatedAt}
+            onClose={() => setShowSummaryModal(false)}
+          />
+        )}
       </div>
-
-      {showSummaryModal && summaryData && (
-        <AISummaryModal
-          summary={summaryData.summary}
-          documentCount={summaryData.documentCount}
-          generatedAt={summaryData.generatedAt}
-          onClose={() => setShowSummaryModal(false)}
-        />
-      )}
     </PatientLayout>
   );
 };

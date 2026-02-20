@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import DocumentModal from "../../components/DocumentModal";
 import QrModal from "../../components/QrModal";
+import PatientLayout from "../../components/PatientLayout";
 
 const API = "http://localhost:5000";
 
@@ -9,12 +10,20 @@ type DocType = "Prescription" | "Lab Report" | "Scan" | "Other";
 
 type DocumentItem = { id: string; url: string; type: DocType; uploadedByName?: string; uploadedByRole?: string; createdAt?: string };
 
+const getBadgeClass = (type: DocType) => {
+  switch (type) {
+    case "Prescription": return "app-doc-badge app-doc-badge--prescription";
+    case "Lab Report": return "app-doc-badge app-doc-badge--lab";
+    case "Scan": return "app-doc-badge app-doc-badge--scan";
+    default: return "app-doc-badge app-doc-badge--other";
+  }
+};
+
 export default function Records() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [activeDoc, setActiveDoc] = useState<DocumentItem | null>(null);
   const [patientId, setPatientId] = useState<string>(() => localStorage.getItem("patientId") || "");
 
-  // NEW: multi-select + share state
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [shareDocs, setShareDocs] = useState<DocumentItem[] | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -39,16 +48,13 @@ export default function Records() {
     let mounted = true;
 
     (async () => {
-      let pidForFetch = patientId; // default to stored component state
-      // If a sessionId exists (QR session created), prefer the session's patientId
+      let pidForFetch = patientId;
       try {
         const sessionId = localStorage.getItem("sessionId");
         if (sessionId) {
           const sessRes = await axios.get(`${API}/api/session/${sessionId}`);
           const sessPid = sessRes.data?.data?.patientId;
           if (sessPid) {
-            // Use session's patientId for this fetch only; do NOT overwrite
-            // global `patientId` in localStorage to avoid accidental changes.
             pidForFetch = sessPid;
           }
         }
@@ -59,10 +65,8 @@ export default function Records() {
       if (!pidForFetch) {
         const userId = localStorage.getItem("userId");
         const userRole = (localStorage.getItem("userRole") || "").toLowerCase();
-        // Only default to the signed-in user id when they're actually a patient
         if (userId && userRole === "patient") {
           pidForFetch = userId;
-          // only persist when there was no stored patientId previously
           if (!localStorage.getItem("patientId")) {
             localStorage.setItem("patientId", pidForFetch);
             setPatientId(pidForFetch);
@@ -112,7 +116,6 @@ export default function Records() {
     }
   };
 
-  // NEW: toggle selection for a document
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       if (prev.includes(id)) return prev.filter((p) => p !== id);
@@ -120,7 +123,6 @@ export default function Records() {
     });
   };
 
-  // NEW: open share modal for currently selected documents
   const openShareForSelected = () => {
     if (selectedIds.length === 0) {
       window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Select one or more documents to share", type: "error" } }));
@@ -133,7 +135,6 @@ export default function Records() {
     setShowShareModal(true);
   };
 
-  // NEW: quick-open share modal for a single document (keeps selection in sync)
   const openShareForDoc = (doc: DocumentItem) => {
     setSelectedIds([doc.id]);
     setShareDocs([doc]);
@@ -142,7 +143,6 @@ export default function Records() {
     setShowShareModal(true);
   };
 
-  // NEW: generate session & QR including sharedDocIds array
   const generateShare = async () => {
     if (!shareDocs || shareDocs.length === 0) return;
     try {
@@ -179,7 +179,6 @@ export default function Records() {
             { headers: { Authorization: `Bearer ${authToken}` } }
           );
         } else {
-          // fallback anonymous creation
           res = await axios.post(`${API}/api/session/create-anon`, { accessType: shareAccessType, durationMinutes: shareDuration, patientId: patientIdToUse, sharedDocIds });
         }
       } catch (err: any) {
@@ -192,7 +191,6 @@ export default function Records() {
 
       const { token, sessionId } = res.data.data;
 
-      // persist session and the array of doc ids
       localStorage.setItem("sessionId", sessionId);
       localStorage.setItem("sessionSharedDocIds", JSON.stringify(sharedDocIds));
 
@@ -209,166 +207,182 @@ export default function Records() {
 
   if (!patientId) {
     return (
-      <div className="card">
-        <h3>Sign In Required</h3>
-        <p>Please sign in as a patient to view your records.</p>
-      </div>
+      <PatientLayout>
+        <div className="app-ambient">
+          <div className="app-glass-card" style={{ textAlign: "center", padding: 40 }}>
+            <h3 style={{ fontSize: 18, marginBottom: 8 }}>Sign In Required</h3>
+            <p style={{ color: "var(--text-muted)" }}>Please sign in as a patient to view your records.</p>
+          </div>
+        </div>
+      </PatientLayout>
     );
   }
 
   return (
-    <div className="main" style={{ maxWidth: "760px", margin: "0 auto" }}>
-      <h2>My Records</h2>
-      <p style={{ color: "var(--text-muted)", marginBottom: "8px" }}>
-        All documents linked to your account.
-      </p>
+    <PatientLayout>
+      <div className="app-ambient">
+        {/* ── Page header ── */}
+        <div className="app-header">
+          <span className="app-kicker">Records</span>
+          <h2 className="app-title">My Records</h2>
+          <p className="app-subtitle">All documents linked to your account. Select documents to share via QR.</p>
+        </div>
 
-      <div className="card">
-        {documents.length === 0 ? (
-          <p style={{ color: "var(--text-muted)" }}>
-            No records available yet.
-          </p>
-        ) : (
-          <>
-            <div className="records-toolbar">
-              <div className="records-toolbar__summary">
-                <h3>Stored Documents</h3>
-                <span className="records-toolbar__hint">
-                  Showing {filteredDocuments.length} of {documents.length}
-                </span>
-              </div>
-
-              <div className="records-toolbar__controls">
-                <div className="records-type-control">
-                  <label htmlFor="type-filter" className="records-filter-label">Type</label>
-                  <select
-                    id="type-filter"
-                    className="records-type-select"
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value as DocType | "All")}
-                  >
-                    {typeOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+        {/* ── Document list card ── */}
+        <section className="app-glass-card">
+          {documents.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 28 }}>
+              <div style={{ fontSize: 48, marginBottom: 14 }}>📋</div>
+              <p style={{ color: "var(--text-muted)", fontSize: 15 }}>No records available yet.</p>
+              <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 6 }}>Upload documents from the Documents page to see them here.</p>
+            </div>
+          ) : (
+            <>
+              {/* Toolbar */}
+              <div className="records-toolbar">
+                <div className="records-toolbar__summary">
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Stored Documents</h3>
+                  <span className="records-toolbar__hint">
+                    Showing {filteredDocuments.length} of {documents.length}
+                  </span>
                 </div>
 
-                <button className="btn btn-primary records-share-btn" onClick={openShareForSelected} disabled={selectedIds.length === 0}>
-                  Share Selected ({selectedIds.length})
+                <div className="records-toolbar__controls">
+                  <div className="records-type-control">
+                    <label htmlFor="type-filter" className="records-filter-label">Type</label>
+                    <select
+                      id="type-filter"
+                      className="records-type-select"
+                      value={typeFilter}
+                      onChange={(e) => setTypeFilter(e.target.value as DocType | "All")}
+                    >
+                      {typeOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button className="btn btn-primary records-share-btn" onClick={openShareForSelected} disabled={selectedIds.length === 0}>
+                    Share Selected ({selectedIds.length})
+                  </button>
+                </div>
+              </div>
+
+              {filteredDocuments.length === 0 ? (
+                <p style={{ color: "var(--text-muted)", textAlign: "center", padding: 20 }}>
+                  No records match the selected type.
+                </p>
+              ) : (
+                <div className="scroll-list" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {filteredDocuments.map((doc, index) => {
+                    const safeUrl = /^(https?:|data:|blob:)/i.test(doc.url) ? doc.url : `https://${doc.url}`;
+                    const checkboxId = `record-select-${doc.id || index}`;
+                    const isSelected = selectedIds.includes(doc.id);
+                    const metaParts = [
+                      doc.uploadedByName ? `Uploaded by ${doc.uploadedByName}` : "Uploaded",
+                      doc.createdAt ? new Date(doc.createdAt).toLocaleString() : null,
+                      doc.uploadedByRole || null,
+                      "Secure cloud document",
+                    ].filter(Boolean) as string[];
+
+                    return (
+                      <div
+                        key={doc.id || index}
+                        className="app-doc-item"
+                        style={isSelected ? { borderColor: "var(--primary)", background: "var(--primary-light)" } : undefined}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+                          <input
+                            type="checkbox"
+                            id={checkboxId}
+                            aria-label={`Select document ${index + 1}`}
+                            checked={isSelected}
+                            onChange={() => toggleSelect(doc.id)}
+                            style={{ width: 18, height: 18, accentColor: "var(--primary)" }}
+                          />
+                          <label htmlFor={checkboxId} style={{ cursor: "pointer", flex: 1 }}>
+                            <div className="app-doc-item__title">
+                              <strong>Medical Record {index + 1}</strong>
+                              <span className={getBadgeClass(doc.type)}>{doc.type}</span>
+                            </div>
+                            <div className="app-doc-item__meta">{metaParts.join(" • ")}</div>
+                          </label>
+                        </div>
+
+                        <div className="app-doc-item__actions">
+                          <button
+                            className="btn btn-secondary"
+                            onClick={() =>
+                              setActiveDoc({
+                                id: doc.id,
+                                url: safeUrl,
+                                type: doc.type,
+                                uploadedByName: doc.uploadedByName,
+                                uploadedByRole: doc.uploadedByRole,
+                                createdAt: doc.createdAt,
+                              })
+                            }
+                          >
+                            View
+                          </button>
+
+                          <button className="btn btn-primary" onClick={() => openShareForDoc(doc)}>
+                            Share
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        {/* Share modal for multiple docs */}
+        {showShareModal && shareDocs && (
+          <div className="editor-modal" role="dialog" aria-modal onClick={() => setShowShareModal(false)}>
+            <div className="editor-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+              <button aria-label="Close" className="btn btn-secondary" style={{ position: "absolute", right: 12, top: 12 }} onClick={() => setShowShareModal(false)}>✕</button>
+              <h3>Share {shareDocs.length} Document{shareDocs.length > 1 ? "s" : ""}</h3>
+              <p style={{ color: "var(--text-muted)" }}>{shareDocs.map((d) => d.type).join(", ")}</p>
+
+              <label style={{ fontWeight: 700, fontSize: 13, display: "block", marginTop: 16 }}>Access Type</label>
+              <select className="app-select" value={shareAccessType} onChange={(e) => setShareAccessType(e.target.value as "view" | "write")} style={{ margin: "8px 0 16px" }}>
+                <option value="view">View Only</option>
+                <option value="write">View + Write</option>
+              </select>
+
+              <label style={{ fontWeight: 700, fontSize: 13, display: "block" }}>Duration (minutes)</label>
+              <input className="app-select" type="number" min={1} value={shareDuration} onChange={(e) => setShareDuration(Number(e.target.value))} style={{ margin: "8px 0 16px" }} />
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn btn-primary" onClick={generateShare} disabled={generatingShare}>
+                  {generatingShare ? "Generating…" : `Generate QR for ${shareDocs.length} file${shareDocs.length > 1 ? "s" : ""}`}
                 </button>
+                <button className="btn btn-secondary" onClick={() => setShowShareModal(false)}>Cancel</button>
               </div>
-            </div>
-
-            {filteredDocuments.length === 0 ? (
-              <p style={{ color: "var(--text-muted)" }}>
-                No records match the selected type.
-              </p>
-            ) : (
-              <div className="scroll-list" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                {filteredDocuments.map((doc, index) => {
-                  const safeUrl = /^(https?:|data:|blob:)/i.test(doc.url) ? doc.url : `https://${doc.url}`;
-                  const checkboxId = `record-select-${doc.id || index}`;
-                  const isSelected = selectedIds.includes(doc.id);
-                  const rowClass = isSelected ? "records-row records-row--selected" : "records-row";
-                  const metaParts = [
-                    doc.uploadedByName ? `Uploaded by ${doc.uploadedByName}` : "Uploaded",
-                    doc.createdAt ? new Date(doc.createdAt).toLocaleString() : null,
-                    doc.uploadedByRole || null,
-                    "Secure cloud document",
-                  ].filter(Boolean) as string[];
-
-                  return (
-                    <div key={doc.id || index} className={rowClass}>
-                      <div className="records-row__left">
-                        <input
-                          type="checkbox"
-                          id={checkboxId}
-                          aria-label={`Select document ${index + 1}`}
-                          checked={isSelected}
-                          onChange={() => toggleSelect(doc.id)}
-                        />
-                        <label htmlFor={checkboxId} className={`records-title${isSelected ? " records-title--selected" : ""}`}>
-                          <div className="records-title__row">
-                            <strong>Medical Record {index + 1}</strong>
-                            <span className="records-pill">{doc.type}</span>
-                          </div>
-                          <span className="records-meta">{metaParts.join(" • ")}</span>
-                        </label>
-                      </div>
-
-                      <div className="records-actions">
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() =>
-                            setActiveDoc({
-                              id: doc.id,
-                              url: safeUrl,
-                              type: doc.type,
-                              uploadedByName: doc.uploadedByName,
-                              uploadedByRole: doc.uploadedByRole,
-                              createdAt: doc.createdAt,
-                            })
-                          }
-                        >
-                          View
-                        </button>
-
-                        <button className="btn btn-primary" onClick={() => openShareForDoc(doc)}>
-                          Share
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Share modal for multiple docs */}
-      {showShareModal && shareDocs && (
-        <div className="editor-modal" role="dialog" aria-modal onClick={() => setShowShareModal(false)}>
-          <div className="editor-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
-            <button aria-label="Close" className="btn btn-secondary" style={{ position: "absolute", right: 12, top: 12 }} onClick={() => setShowShareModal(false)}>✕</button>
-            <h3>Share {shareDocs.length} Document{shareDocs.length > 1 ? "s" : ""}</h3>
-            <p style={{ color: "var(--text-muted)" }}>{shareDocs.map((d) => d.type).join(", ")}</p>
-
-            <label><strong>Access Type</strong></label>
-            <select value={shareAccessType} onChange={(e) => setShareAccessType(e.target.value as "view" | "write")} style={{ width: "100%", margin: "8px 0 16px", padding: "10px" }}>
-              <option value="view">View Only</option>
-              <option value="write">View + Write</option>
-            </select>
-
-            <label><strong>Duration (minutes)</strong></label>
-            <input type="number" min={1} value={shareDuration} onChange={(e) => setShareDuration(Number(e.target.value))} style={{ width: "100%", margin: "8px 0 16px", padding: "10px" }} />
-
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn btn-primary" onClick={generateShare} disabled={generatingShare}>
-                {generatingShare ? "Generating…" : `Generate QR for ${shareDocs.length} file${shareDocs.length > 1 ? "s" : ""}`}
-              </button>
-              <button className="btn" onClick={() => setShowShareModal(false)}>Cancel</button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* existing document modal */}
-      {activeDoc && (
-        <DocumentModal
-          url={activeDoc.url}
-          title={`Record — ${activeDoc.type}`}
-          uploadedByName={activeDoc.uploadedByName}
-          uploadedByRole={activeDoc.uploadedByRole}
-          createdAt={activeDoc.createdAt}
-          onClose={() => setActiveDoc(null)}
-        />
-      )}
+        {/* existing document modal */}
+        {activeDoc && (
+          <DocumentModal
+            url={activeDoc.url}
+            title={`Record — ${activeDoc.type}`}
+            uploadedByName={activeDoc.uploadedByName}
+            uploadedByRole={activeDoc.uploadedByRole}
+            createdAt={activeDoc.createdAt}
+            onClose={() => setActiveDoc(null)}
+          />
+        )}
 
-      {/* QR modal */}
-      {showQrModal && qrToken && <QrModal token={qrToken} onClose={() => { setShowQrModal(false); setQrToken(null); }} />}
-    </div>
+        {/* QR modal */}
+        {showQrModal && qrToken && <QrModal token={qrToken} onClose={() => { setShowQrModal(false); setQrToken(null); }} />}
+      </div>
+    </PatientLayout>
   );
 }

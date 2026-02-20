@@ -1,7 +1,6 @@
 import PatientLayout from "../../components/PatientLayout";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import TiltCard from "../../components/TiltCard";
 
 const API = "http://localhost:5000";
 
@@ -43,62 +42,79 @@ const Emergency = () => {
 
   const rows = useMemo(
     () => [
-      { label: "Blood Group", value: emergency?.bloodGroup || "—" },
-      { label: "Allergies", value: (emergency?.allergies || []).join(", ") || "—" },
-      {
-        label: "Current Medications",
-        value: (emergency?.medications || []).join(", ") || "—",
-      },
-      {
-        label: "Chronic Conditions",
-        value: (emergency?.chronicConditions || []).join(", ") || "—",
-      },
-      { label: "Emergency Contact", value: emergency?.emergencyContact || "—" },
+      { label: "Blood Group", value: emergency?.bloodGroup || "—", icon: "🩸" },
+      { label: "Allergies", value: (emergency?.allergies || []).join(", ") || "—", icon: "⚠️" },
+      { label: "Current Medications", value: (emergency?.medications || []).join(", ") || "—", icon: "💊" },
+      { label: "Chronic Conditions", value: (emergency?.chronicConditions || []).join(", ") || "—", icon: "🫀" },
+      { label: "Emergency Contact", value: emergency?.emergencyContact || "—", icon: "📞" },
     ],
     [emergency]
   );
 
   return (
     <PatientLayout>
-      <div className="page-header">
-        <div>
-          <div className="page-title">Emergency Profile</div>
-          <div className="muted">Critical details for urgent situations. Keep this accurate and easy to read.</div>
-        </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="btn btn-secondary" onClick={() => window.print()}>Print</button>
-          <button className="btn btn-primary" onClick={() => window.dispatchEvent(new Event("patient-open-editor"))}>Edit Profile</button>
-        </div>
-      </div>
+      <div className="app-ambient">
+        {/* ── Header ── */}
+        <div className="app-header">
+          <span className="app-kicker">Emergency</span>
+          <h2 className="app-title">Emergency Profile</h2>
+          <p className="app-subtitle">Critical details for urgent situations. Keep this accurate and easy to read.</p>
 
-      <TiltCard className="card" tiltMaxDeg={5}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <h3 style={{ margin: 0 }}>Critical Information</h3>
-          <span className={`hk-badge ${status.tone === "safe" ? "hk-badge--write" : "hk-badge--view"}`}>{status.label}</span>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
+            <span className={`app-emergency-badge app-emergency-badge--${status.tone}`}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "currentColor" }} />
+              {status.label}
+            </span>
+            <button className="btn btn-secondary" onClick={() => window.print()} style={{ fontSize: 13, padding: "8px 16px" }}>
+              🖨️ Print
+            </button>
+            <button className="btn btn-primary" onClick={() => window.dispatchEvent(new Event("patient-open-editor"))} style={{ fontSize: 13, padding: "8px 16px" }}>
+              ✏️ Edit Profile
+            </button>
+          </div>
         </div>
 
-        {loading ? (
-          <div className="muted" style={{ marginTop: 12 }}>Fetching the latest emergency details…</div>
-        ) : !emergency ? (
-          <div style={{ marginTop: 14 }}>
-            <div className="muted">No emergency profile yet.</div>
-            <div className="card" style={{ marginTop: 14, background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-              <p className="muted" style={{ margin: 0 }}>
-                Add blood group, allergies, medications, chronic conditions, and an emergency contact. This is shown for quick access and can be printed.
-              </p>
+        {/* ── Content ── */}
+        <section className="app-glass-card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Critical Information</h3>
+          </div>
+
+          {loading ? (
+            <div style={{ textAlign: "center", padding: 28 }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
+              <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Fetching the latest emergency details…</p>
             </div>
-          </div>
-        ) : (
-          <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-            {rows.map(({ label, value }) => (
-              <div key={label} className="card" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-                <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>{label}</div>
-                <div style={{ marginTop: 10, fontSize: 16, fontWeight: 800 }}>{value || "—"}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </TiltCard>
+          ) : !emergency ? (
+            <div style={{ textAlign: "center", padding: 32 }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🏥</div>
+              <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>No emergency profile yet</p>
+              <p style={{ color: "var(--text-muted)", fontSize: 13, maxWidth: 420, margin: "0 auto" }}>
+                Add blood group, allergies, medications, chronic conditions, and an emergency contact. This data is shown for quick access and can be printed.
+              </p>
+              <button
+                className="btn btn-primary"
+                style={{ marginTop: 18, padding: "10px 24px" }}
+                onClick={() => window.dispatchEvent(new Event("patient-open-editor"))}
+              >
+                Set Up Emergency Profile
+              </button>
+            </div>
+          ) : (
+            <div className="app-emergency-grid">
+              {rows.map(({ label, value, icon }, idx) => (
+                <div key={label} className="app-emergency-item" style={{ animationDelay: `${idx * 0.06}s` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <span style={{ fontSize: 20 }}>{icon}</span>
+                    <div className="app-emergency-item__label">{label}</div>
+                  </div>
+                  <div className="app-emergency-item__value">{value || "—"}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </PatientLayout>
   );
 };
