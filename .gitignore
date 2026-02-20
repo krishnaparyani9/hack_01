@@ -205,3 +205,6 @@ ehthumbs_vista.db
 .kilocode/
 .claude/
 .agents/
+
+# Backup files
+*.bak
