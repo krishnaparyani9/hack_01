@@ -9,6 +9,7 @@ const API = "http://localhost:5000";
 
 type PatientSummaryState = {
   summary: string;
+  structuredSummary?: Record<string, any> | null;
   documentCount: number;
   totalDocumentCount: number;
   generatedAt?: string;
@@ -132,6 +133,7 @@ const Dashboard = () => {
 
       setSummaryData({
         summary: data?.summary || "",
+        structuredSummary: data?.structuredSummary || null,
         documentCount: summarizedCount,
         totalDocumentCount,
         generatedAt: data?.generatedAt,
@@ -312,7 +314,8 @@ const Dashboard = () => {
 
       {showSummaryModal && summaryData && (
         <AISummaryModal
-          summary={summaryData.summary}
+            summary={summaryData.summary}
+            structuredSummary={summaryData.structuredSummary}
           documentCount={summaryData.documentCount}
           generatedAt={summaryData.generatedAt}
           onClose={() => setShowSummaryModal(false)}

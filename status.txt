@@ -1,0 +1,38 @@
+ M backend/.env
+ M backend/dist/scripts/listDocumentsByPatient.js
+ M backend/dist/scripts/reassignDocuments.js
+ M backend/dist/src/app.js
+ M backend/dist/src/config/cloudinary.js
+ M backend/dist/src/config/db.js
+ M backend/dist/src/controllers/auth.controller.js
+ M backend/dist/src/controllers/document.controller.js
+ M backend/dist/src/controllers/patient.controller.js
+ M backend/dist/src/controllers/session.controller.js
+ M backend/dist/src/middleware/auth.middleware.js
+ M backend/dist/src/middleware/upload.js
+ M backend/dist/src/models/document.model.js
+ M backend/dist/src/models/patient.model.js
+ M backend/dist/src/models/user.model.js
+ M backend/dist/src/routes/auth.routes.js
+ M backend/dist/src/routes/document.routes.js
+ M backend/dist/src/routes/patient.routes.js
+ M backend/dist/src/routes/session.routes.js
+ M backend/dist/src/server.js
+ M backend/dist/src/services/session.service.js
+ M backend/dist/src/types/session.types.js
+ M backend/dist/src/utils/documentStore.js
+ M backend/dist/src/utils/jwt.js
+ M backend/dist/src/utils/sessionStore.js
+ M backend/src/controllers/document.controller.ts
+ M backend/src/services/llm.service.ts
+ M backend/src/utils/ocr.service.ts
+ M frontend/package-lock.json
+ M frontend/package.json
+ M frontend/src/components/AISummaryModal.tsx
+ M frontend/src/pages/doctor/Session.tsx
+ M frontend/src/pages/patient/Dashboard.tsx
+?? .gitignore
+?? backend/test_format.js
+?? backend/test_modal.js
+?? modal_backend/
+?? status.txt

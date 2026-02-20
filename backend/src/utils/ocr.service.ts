@@ -124,17 +124,21 @@ export class OCRService {
    * @returns string - Cleaned text.
    */
   static cleanText(text: string): string {
-    // Basic cleaning: remove extra whitespace, normalize line breaks
-    let cleaned = text.replace(/\s+/g, ' ').trim();
+    // Basic cleaning: normalize CRLF -> LF and preserve line breaks for table-like extraction
+    let cleaned = text.replace(/\r\n?/g, '\n');
+    // Collapse multiple blank lines to a single blank line
+    cleaned = cleaned.replace(/\n{2,}/g, '\n');
+
+    // Trim spaces on each line but keep line separations
+    const linesRaw = cleaned.split('\n').map((l) => l.replace(/\s+/g, ' ').trim());
 
     // Remove common headers/footers (customize based on typical medical docs)
-    cleaned = cleaned.replace(/^(Patient Name|Date|Report|Page \d+|Confidential).*$/gim, '');
+    const filtered = linesRaw.filter((line) => !/^(Patient Name|Date|Report|Page \d+|Confidential)/i.test(line));
 
-    // Remove duplicate lab ranges (e.g., "Normal: 0-100" repeated)
-    const lines = cleaned.split('\n');
+    // Remove duplicate lines (case-insensitive)
     const uniqueLines: string[] = [];
     const seen = new Set<string>();
-    for (const line of lines) {
+    for (const line of filtered) {
       const normalized = line.trim().toLowerCase();
       if (!seen.has(normalized) && normalized.length > 0) {
         seen.add(normalized);
@@ -143,8 +147,8 @@ export class OCRService {
     }
     cleaned = uniqueLines.join('\n');
 
-    // Remove noise: non-alphanumeric except common medical symbols
-    cleaned = cleaned.replace(/[^a-zA-Z0-9\s.,\-\/:()]/g, '');
+    // Remove non-printable noise characters but preserve common medical symbols and %, ±, >, <, /, . and parentheses
+    cleaned = cleaned.replace(/[^\x20-\x7E\n%±<>/(),.:;\-]/g, '');
 
     return cleaned.trim();
   }

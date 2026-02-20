@@ -414,13 +414,57 @@ export const summarizeDocumentController = async (req: Request, res: Response) =
     }
 
     const llmService = new LLMService();
-    const summary = await summarizeDocumentWithLLM(doc, llmService);
+
+    // Extract and clean text once
+    const rawText = await OCRService.extractText(doc.url);
+    const cleanedText = OCRService.cleanText(rawText);
+
+    // If the cleaned text is long, return a fast heuristic summary immediately
+    const FAST_THRESHOLD = 3000; // characters
+    if ((cleanedText || "").length > FAST_THRESHOLD) {
+      const fast = llmService.fastSummarize(cleanedText);
+
+      // Kick off background LLM call to compute full structured summary and persist it
+      (async () => {
+        try {
+          // Allow a long-running background LLM request (no abort timeout)
+          const fullStructured = await llmService.generateStructuredSummary(cleanedText, { allowLong: true });
+          const textual = llmService.formatStructuredData(fullStructured);
+          if (textual) {
+            doc.summary = textual;
+          }
+          await doc.save();
+          console.log(`Background LLM summary stored for document ${doc._id}`);
+        } catch (bgErr) {
+          console.error(`Background LLM summarization failed for document ${doc._id}:`, bgErr);
+        }
+      })();
+
+      return res.status(200).json({
+        message: "Document summarized (fast heuristic). Full AI summary will be available shortly.",
+        data: {
+          id: doc._id,
+          summary: fast.summaryMarkdown || fast.summary,
+          structuredSummary: fast,
+          fast: true,
+        },
+      });
+    }
+
+    // Short documents: compute full structured summary synchronously
+    const structured = await llmService.generateStructuredSummary(cleanedText);
+    const textual = llmService.formatStructuredData(structured);
+    if (textual) {
+      doc.summary = textual;
+      await doc.save();
+    }
 
     return res.status(200).json({
       message: "Document summarized successfully",
       data: {
         id: doc._id,
-        summary,
+        summary: textual || (doc.summary ?? null),
+        structuredSummary: structured,
       },
     });
   } catch (err) {
@@ -474,7 +518,7 @@ export const summarizePatientDocumentsController = async (req: Request, res: Res
     const title = doc.type || `Document ${preparedSummaries.length + 1}`;
     let summaryText = (doc.summary || "").trim();
 
-    if (!summaryText) {
+    if (!summaryText || summaryText === "No summary data extracted." || summaryText.includes("Raw LLM Output")) {
       try {
         summaryText = await summarizeDocumentWithLLM(doc, llmService);
       } catch (error) {
@@ -501,7 +545,14 @@ export const summarizePatientDocumentsController = async (req: Request, res: Res
   }
 
   try {
-    const aggregateSummary = await llmService.generateAggregateSummary(preparedSummaries);
+    // Prefer structured aggregate summary
+    const combinedText = preparedSummaries.map((s, i) => `${s.title}:
+${s.summary}`).join('\n\n');
+
+    const structured = await llmService.generateStructuredSummary(combinedText);
+
+    const aggregateTextual = llmService.formatStructuredData(structured);
+
     return res.status(200).json({
       message: "Patient documents summarized successfully",
       data: {
@@ -509,7 +560,8 @@ export const summarizePatientDocumentsController = async (req: Request, res: Res
         documentCount: docs.length,
         summarizedCount: preparedSummaries.length,
         failedDocumentIds,
-        summary: aggregateSummary,
+        summary: aggregateTextual,
+        structuredSummary: structured,
         generatedAt: new Date().toISOString(),
       },
     });

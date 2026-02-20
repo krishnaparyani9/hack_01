@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 type Props = {
   summary: string;
+  structuredSummary?: Record<string, any> | null;
   documentCount: number;
   generatedAt?: string;
   onClose: () => void;
@@ -87,17 +88,67 @@ const renderInline = (text: string, keyPrefix: string): ReactNode[] | string => 
   return nodes;
 };
 
-const AISummaryModal = ({ summary, documentCount, generatedAt, onClose }: Props) => {
+  const AISummaryModal = ({ summary, structuredSummary, documentCount, generatedAt, onClose }: Props) => {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const timestamp = generatedAt ? new Date(generatedAt).toLocaleString() : null;
-  const trimmedSummary = summary.trim();
+  const trimmedSummary = (summary || "").trim();
 
+  // If structured summary is provided prefer rendering its fields
   const blocks = useMemo(() => {
+    if (structuredSummary && typeof structuredSummary === 'object') {
+      const parts: string[] = [];
+
+      const addSection = (title: string, value: any) => {
+        if (!value) return;
+        parts.push(`${title}:`);
+        if (Array.isArray(value)) {
+          value.forEach((v: any) => {
+            if (v && typeof v === 'object') {
+              // format reading objects
+              const name = v.name || v.raw || '';
+              const valueStr = v.value ? `: ${v.value}` : '';
+              const unit = v.unit ? ` ${v.unit}` : '';
+              const ref = v.ref ? ` (ref: ${v.ref})` : '';
+              parts.push(`- ${name}${valueStr}${unit}${ref}`);
+            } else {
+              parts.push(`- ${v}`);
+            }
+          });
+        } else {
+          // split long lines into bullets if they contain ';' or ','
+          const s = String(value).trim();
+          if (s.includes(';')) {
+            s.split(';').map(x => x.trim()).filter(Boolean).forEach(x => parts.push(`- ${x}`));
+          } else if (s.includes('\n')) {
+            s.split('\n').map(x => x.trim()).filter(Boolean).forEach(x => parts.push(`- ${x}`));
+          } else {
+            parts.push(`- ${s}`);
+          }
+        }
+      };
+
+      addSection('Chief complaint', structuredSummary.chief_complaint || structuredSummary.chiefComplaint);
+      addSection('Duration', structuredSummary.duration);
+  addSection('Key findings', structuredSummary.key_findings || structuredSummary.keyFindings);
+  // render structured readings if available (objects from heuristic)
+  addSection('Important readings', structuredSummary.readings || structuredSummary.important_readings || structuredSummary.importantReadings || structuredSummary.readings);
+      addSection('Important readings', structuredSummary.important_readings || structuredSummary.importantReadings || structuredSummary.readings);
+      addSection('Threats / concerns', structuredSummary.threats || structuredSummary.threats_caused || structuredSummary.concerns);
+      addSection('Doctor recommendations', structuredSummary.recommendations || structuredSummary.recommendation);
+      addSection('Future precautions', structuredSummary.precautions || structuredSummary.future_precautions);
+  // include any free-form comments present in heuristic output
+  addSection('Comments', structuredSummary.comments);
+      addSection('Summary', structuredSummary.summary);
+
+      const composed = parts.join('\n');
+      return parseSummary(composed);
+    }
+
     if (!trimmedSummary) {
       return parseSummary("No significant findings across the provided records.");
     }
     return parseSummary(trimmedSummary);
-  }, [trimmedSummary]);
+  }, [trimmedSummary, structuredSummary]);
 
   const handleCopy = async () => {
     try {

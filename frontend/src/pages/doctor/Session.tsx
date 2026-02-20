@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
 import axios from "axios";
 import DocumentModal from "../../components/DocumentModal";
 import TiltCard from "../../components/TiltCard";
@@ -300,7 +301,9 @@ export default function DoctorSession() {
                       <strong>{inferType(doc)}</strong>
                       <span className="doc-badge">{doc.type}</span>
                     </div>
-                    <div style={{ whiteSpace: "pre-line", marginTop: 10, lineHeight: 1.65 }}>{summaries[doc.id]}</div>
+                    <div style={{ marginTop: 10, lineHeight: 1.65 }} className="markdown-body">
+                      <ReactMarkdown>{summaries[doc.id]}</ReactMarkdown>
+                    </div>
                   </div>
                 ) : null
               )}
