@@ -74,77 +74,79 @@ const PatientLayout = ({ children }: { children: React.ReactNode }) => {
   const patientName = localStorage.getItem("patientName") || "Patient";
   const patientEmail = localStorage.getItem("patientEmail") || "";
 
+  // collapsible sidebar
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem("sb-collapsed") === "1");
+  const toggleCollapse = () => {
+    setCollapsed((prev) => {
+      localStorage.setItem("sb-collapsed", prev ? "0" : "1");
+      return !prev;
+    });
+  };
 
-
-  // load dynamic PatientEditor component lazily (declared below)
   return (
-    <div className="layout">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h2>HealthKey</h2>
-
-          <div className="profile">
-            <div className="avatar-wrap">
-              <div className="avatar" aria-hidden>{patientName.charAt(0).toUpperCase()}</div>
-            </div>
-
-            <div className="meta">
-              <div className="name">{patientName}</div>
-              <div className="email">{patientEmail || "your.email@example.com"}</div>
-              <a className="view-profile" href="#" onClick={(e) => { e.preventDefault(); setShowEditor(true); }}>
-                View Profile →
-              </a>
-            </div>
-
-
-          </div>
+    <div className={`layout ${collapsed ? "sb-is-collapsed" : ""}`}>
+      <aside className={`sidebar sb-premium ${collapsed ? "sb-collapsed" : ""}`}>
+        {/* Brand + collapse toggle */}
+        <div className="sb-brand">
+          <span className="sb-brand__icon">🏥</span>
+          <span className="sb-brand__text sb-hide-collapsed">HealthKey</span>
+          <button className="sb-toggle" onClick={toggleCollapse} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} type="button">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d={collapsed ? "M6 4l5 5-5 5" : "M12 4L7 9l5 5"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
         </div>
 
+        {/* Profile card */}
+        <button className="sb-profile" onClick={() => setShowEditor(true)} type="button" data-tooltip="View Profile">
+          <div className="sb-profile__avatar">
+            <span>{patientName.charAt(0).toUpperCase()}</span>
+          </div>
+          <div className="sb-profile__info sb-hide-collapsed">
+            <div className="sb-profile__name">{patientName}</div>
+            <div className="sb-profile__email">{patientEmail || "your.email@example.com"}</div>
+          </div>
+          <svg className="sb-profile__chevron sb-hide-collapsed" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
 
+        <div className="sb-divider" />
 
-        <nav>
-          <Link
-            className={isActive("/patient/dashboard")}
-            to="/patient/dashboard"
-          >
-            Dashboard
+        {/* Navigation */}
+        <nav className="sb-nav">
+          <span className="sb-nav__label sb-hide-collapsed">Menu</span>
+
+          <Link className={`sb-nav__item ${isActive("/patient/dashboard")}`} to="/patient/dashboard" data-tooltip="Dashboard">
+            <span className="sb-nav__icon">📊</span>
+            <span className="sb-hide-collapsed">Dashboard</span>
           </Link>
 
-          <Link
-            className={isActive("/patient/records")}
-            to="/patient/records"
-          >
-            Tap to share
+          <Link className={`sb-nav__item ${isActive("/patient/records")}`} to="/patient/records" data-tooltip="Tap to Share">
+            <span className="sb-nav__icon">🔗</span>
+            <span className="sb-hide-collapsed">Tap to Share</span>
           </Link>
 
-          {/* ✅ NEW: Upload Documents */}
-          <Link
-            className={isActive("/patient/documents")}
-            to="/patient/documents"
-          >
-            Upload Documents
+          <Link className={`sb-nav__item ${isActive("/patient/documents")}`} to="/patient/documents" data-tooltip="Documents">
+            <span className="sb-nav__icon">📁</span>
+            <span className="sb-hide-collapsed">Documents</span>
           </Link>
 
-          
-          <Link
-            className={isActive("/patient/emergency")}
-            to="/patient/emergency"
-          >
-            Emergency Mode
+          <Link className={`sb-nav__item ${isActive("/patient/emergency")}`} to="/patient/emergency" data-tooltip="Emergency">
+            <span className="sb-nav__icon">🚨</span>
+            <span className="sb-hide-collapsed">Emergency</span>
           </Link>
         </nav>
 
-        <div className="sidebar-footer" role="region" aria-label="Sidebar footer">
-          <div className="footer-left">
-            <span className="footer-label">Dark mode</span>
-          </div>
-
-          <div className="footer-actions vertical">
+        {/* Footer */}
+        <div className="sb-footer">
+          <div className="sb-footer__row">
             <ThemeToggle ariaLabel="Toggle dark mode" />
-
-            <button className="btn btn-outline" onClick={handleSignOut}>Sign Out</button>
+            <span className="sb-footer__label sb-hide-collapsed">Dark mode</span>
           </div>
-        </div>  
+          <button className="sb-footer__signout" onClick={handleSignOut} data-tooltip="Sign Out">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 14H3.333A1.333 1.333 0 012 12.667V3.333A1.333 1.333 0 013.333 2H6M10.667 11.333L14 8l-3.333-3.333M14 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <span className="sb-hide-collapsed">Sign Out</span>
+          </button>
+        </div>
       </aside>
 
       <main className="main">
