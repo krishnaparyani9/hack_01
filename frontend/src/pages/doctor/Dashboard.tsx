@@ -20,15 +20,9 @@ const DoctorDashboard = () => {
     (async () => {
       try {
         const token = localStorage.getItem("authToken");
-
-        const res = await fetch(
-          `http://localhost:5000/api/session/${sid}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const res = await fetch(`http://localhost:5000/api/session/${sid}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
         if (!res.ok) throw new Error("Session fetch failed");
 
@@ -59,92 +53,51 @@ const DoctorDashboard = () => {
   };
 
   return (
-    <div
-      className="main"
-      style={{
-        maxWidth: "680px",
-        margin: "0 auto",
-      }}
-    >
-      <h2>Doctor Workspace</h2>
-      <p style={{ color: "var(--text-muted)", marginBottom: "36px" }}>
-        Secure, session-based access to patient records.
-      </p>
+    <div className="main app-ambient" style={{ maxWidth: 720, margin: "0 auto" }}>
+      {/* ── Header ── */}
+      <div className="app-header">
+        <span className="app-kicker">Doctor Workspace</span>
+        <h2 className="app-title">Dashboard</h2>
+        <p className="app-subtitle">Secure, session-based access to patient records.</p>
+      </div>
 
-      {/* ACTIVE SESSION */}
+      {/* ── Active Session ── */}
       {hasActiveSession && activeSession && (
-        <div
-          className="card"
-          style={{
-            marginBottom: "36px",
-            borderLeft: "5px solid var(--primary)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 12,
-            }}
-          >
-            <h3>Active Consultation</h3>
-            <span
-              className="doc-badge"
-              style={{ background: "#ecfeff", color: "#064e3b" }}
-            >
-              ACTIVE
+        <div className="doc-hero doc-hero--active" style={{ marginBottom: 28 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>🩺 Active Consultation</h3>
+            <span className="app-emergency-badge app-emergency-badge--safe">
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "currentColor" }} />
+              Active
             </span>
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-              marginBottom: 18,
-            }}
-          >
-            <div>
+          <div className="doc-hero__grid">
+            <div className="doc-hero__item">
               <strong>Patient</strong>
-              <div className="muted">
-                {activeSession.patientId || "Anonymous"}
-              </div>
+              <div style={{ marginTop: 4, fontSize: 15 }}>{activeSession.patientId || "Anonymous"}</div>
             </div>
-
-            <div>
+            <div className="doc-hero__item">
               <strong>Access</strong>
-              <div className="muted">
-                {activeSession.accessType === "write"
-                  ? "View + Write"
-                  : "View"}
-              </div>
+              <div style={{ marginTop: 4, fontSize: 15 }}>{activeSession.accessType === "write" ? "View + Write" : "View Only"}</div>
             </div>
-
-            <div>
+            <div className="doc-hero__item">
               <strong>Started</strong>
-              <div className="muted">
-                {formatStarted(activeSession.createdAt)}
-              </div>
+              <div style={{ marginTop: 4, fontSize: 15 }}>{formatStarted(activeSession.createdAt)}</div>
             </div>
-
-            <div>
+            <div className="doc-hero__item">
               <strong>Time Left</strong>
-              <div className="muted">
-                {formatTimeLeft(activeSession.expiresAt)}
-              </div>
+              <div style={{ marginTop: 4, fontSize: 15 }}>{formatTimeLeft(activeSession.expiresAt)}</div>
             </div>
           </div>
 
-          <Link to={`/doctor/session/${activeSession.sessionId}`}>
-            <button className="btn btn-primary" style={{ width: "100%" }}>
-              Continue Consultation
-            </button>
-          </Link>
-          <div style={{ marginTop: 8 }}>
+          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+            <Link to={`/doctor/session/${activeSession.sessionId}`} style={{ flex: 1 }}>
+              <button className="btn btn-primary" style={{ width: "100%" }}>Continue Consultation</button>
+            </Link>
             <button
               className="btn btn-secondary"
-              style={{ width: "100%" }}
+              style={{ flex: 1 }}
               onClick={async () => {
                 try {
                   const token = localStorage.getItem("authToken");
@@ -152,10 +105,9 @@ const DoctorDashboard = () => {
                     method: "DELETE",
                     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
                   });
-                } catch (e) {
+                } catch {
                   // ignore
                 }
-
                 localStorage.removeItem("doctorActiveSessionId");
                 setActiveSession(null);
                 window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Session ended", type: "success" } }));
@@ -167,53 +119,35 @@ const DoctorDashboard = () => {
         </div>
       )}
 
-      {/* SCAN QR */}
-      <div
-        className="card"
-        style={{
-          textAlign: "center",
-          padding: "32px 24px",
-        }}
-      >
-        <h3>Start New Consultation</h3>
-        <p
-          style={{
-            color: "var(--text-muted)",
-            margin: "12px 0 20px",
-          }}
-        >
-          Scan the patient’s QR code to request temporary access.
+      {/* ── Scan QR card ── */}
+      <div className="doc-scan-card" style={{ marginBottom: 28 }}>
+        <div className="doc-scan-card__icon">📷</div>
+        <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 800 }}>Start New Consultation</h3>
+        <p style={{ color: "var(--text-muted)", margin: "0 0 22px", fontSize: 14 }}>
+          Scan the patient's QR code to request temporary access to their medical records.
         </p>
-
         <button
-          className="btn"
-          style={{
-            padding: "12px 32px",
-            backgroundColor: "var(--primary-light)",
-            color: "var(--primary)",
-            fontWeight: 600,
-          }}
+          className="btn btn-primary"
+          style={{ padding: "12px 32px" }}
           onClick={() => navigate("/doctor/scan")}
         >
           Scan Patient QR
         </button>
       </div>
 
-      {/* RECENT */}
-      <div
-        style={{
-          marginTop: "40px",
-          fontSize: "13px",
-          color: "var(--text-muted)",
-        }}
-      >
-        <p style={{ marginBottom: "8px" }}>
-          <strong>Recent Sessions</strong>
-        </p>
-        <ul>
-          <li>View Only • Completed</li>
-          <li>View + Write • Expired</li>
-        </ul>
+      {/* ── Recent sessions ── */}
+      <div className="doc-recent">
+        <h4 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)" }}>Recent Sessions</h4>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 12, background: "rgba(43,124,255,0.04)", border: "1px solid var(--border)" }}>
+            <span style={{ fontSize: 14 }}>View Only</span>
+            <span className="app-doc-badge app-doc-badge--other">Completed</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 12, background: "rgba(43,124,255,0.04)", border: "1px solid var(--border)" }}>
+            <span style={{ fontSize: 14 }}>View + Write</span>
+            <span className="app-doc-badge app-doc-badge--other">Expired</span>
+          </div>
+        </div>
       </div>
     </div>
   );

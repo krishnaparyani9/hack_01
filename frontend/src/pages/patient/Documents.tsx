@@ -1,12 +1,29 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import DocumentModal from "../../components/DocumentModal";
+import PatientLayout from "../../components/PatientLayout";
 
 const API = "http://localhost:5000";
 
 type DocType = "Prescription" | "Lab Report" | "Scan" | "Other";
 
 type DocumentItem = { id: string; url: string; type: DocType; uploadedByName?: string; uploadedByRole?: string; createdAt?: string };
+
+const getBadgeClass = (type: DocType) => {
+  switch (type) {
+    case "Prescription": return "app-doc-badge app-doc-badge--prescription";
+    case "Lab Report": return "app-doc-badge app-doc-badge--lab";
+    case "Scan": return "app-doc-badge app-doc-badge--scan";
+    default: return "app-doc-badge app-doc-badge--other";
+  }
+};
+
+const getFileIcon = (url: string) => {
+  if (url.startsWith("data:image")) return "🖼️";
+  if (url.endsWith(".pdf") || url.startsWith("data:application/pdf")) return "📄";
+  if (url.match(/\.(jpg|jpeg|png)$/) || url.startsWith("data:image")) return "🖼️";
+  return "📁";
+};
 
 export default function Documents() {
   const [file, setFile] = useState<File | null>(null);
@@ -19,11 +36,9 @@ export default function Documents() {
   const [patientId, setPatientId] = useState<string>(() => localStorage.getItem("patientId") || "");
 
   useEffect(() => {
-    // Ensure a persistent patientId and fetch documents on mount
     let mounted = true;
     (async () => {
       let pid = patientId;
-      // If a sessionId exists (QR session created), prefer the session's patientId
       try {
         const sessionId = localStorage.getItem("sessionId");
         if (sessionId) {
@@ -39,14 +54,12 @@ export default function Documents() {
         // ignore session lookup failures
       }
       if (!pid) {
-        // For hackathon convenience: fall back to any stored userId (no strict role check)
         const userId = localStorage.getItem("userId");
         if (userId) {
           pid = userId;
           localStorage.setItem("patientId", pid);
           setPatientId(pid);
         } else {
-          // No id available — show empty list but don't block navigation
           setPatientId("");
           if (mounted) setDocuments([]);
           return;
@@ -91,7 +104,6 @@ export default function Documents() {
     }
   };
 
-  // convert File to data URL
   const fileToDataUrl = (f: File) =>
     new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -103,10 +115,8 @@ export default function Documents() {
     });
 
   const uploadDocument = async () => {
-    // Patients should always upload with their persistent patientId — QR restrictions apply only to doctors
     if (!file) return;
 
-    // Ensure we have a patient id — if none, generate a lightweight anonymous id so uploads are possible without auth
     let pid = patientId;
     if (!pid) {
       const userId = localStorage.getItem("userId");
@@ -115,7 +125,6 @@ export default function Documents() {
         localStorage.setItem("patientId", pid);
         setPatientId(pid);
       } else {
-        // generate a temporary anon id for this client
         pid = `anon-${Date.now()}`;
         localStorage.setItem("patientId", pid);
         setPatientId(pid);
@@ -133,8 +142,6 @@ export default function Documents() {
     formData.append("uploaderRole", "patient");
 
     try {
-      // Always use the patient upload endpoint on patient pages so expired sessions don't block uploads
-      // Do NOT set Content-Type manually; the browser will add the proper boundary.
       await axios.post(`${API}/api/documents/upload/by-patient`, formData, {
         onUploadProgress: (e) => {
           if (e.total) {
@@ -148,7 +155,6 @@ export default function Documents() {
     } catch (err: unknown) {
       console.error("Upload error (multipart):", err);
 
-      // show server message when available
       if (axios.isAxiosError(err) && err.response?.data?.message) {
         const msg = err.response.data.message;
         window.dispatchEvent(new CustomEvent("toast", { detail: { message: `Upload failed: ${msg}`, type: "error" } }));
@@ -156,7 +162,6 @@ export default function Documents() {
         window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Upload failed, trying fallback...", type: "error" } }));
       }
 
-      // FALLBACK: try sending file as data URL via JSON endpoint
       try {
         if (!file) throw new Error("No file for fallback");
         const dataUrl = await fileToDataUrl(file);
@@ -187,181 +192,185 @@ export default function Documents() {
     }
   };
 
-  const getFileIcon = (url: string) => {
-    // accept data: URIs and treat data:image/* as images
-    if (url.startsWith("data:image")) return "🖼️";
-    if (url.endsWith(".pdf") || url.startsWith("data:application/pdf")) return "📄";
-    if (url.match(/\.(jpg|jpeg|png)$/) || url.startsWith("data:image")) return "🖼️";
-    return "📁";
-  };
-
-  const getBadgeColor = (type: DocType) => {
-    switch (type) {
-      case "Prescription":
-        return "#e0f2fe";
-      case "Lab Report":
-        return "#ecfeff";
-      case "Scan":
-        return "#f0fdf4";
-      default:
-        return "#f1f5f9";
-    }
-  };
-
-  // Patient ID is auto-created on first visit. QR sessions are optional and only required for granting doctor access.
-
   return (
-    <div className="main" style={{ maxWidth: "760px", margin: "0 auto" }}>
-      <h2>Medical Documents</h2>
-      <p style={{ color: "var(--text-muted)", marginBottom: "8px" }}>
-        Upload prescriptions, lab reports, or medical scans.
-      </p>
-      <p style={{ color: "var(--text-muted)", marginBottom: "16px", fontSize: 12 }}>
-        Viewing patientId: {patientId || "(none)"}
-      </p>
+    <PatientLayout>
+      <div className="app-ambient">
+        {/* ── Page header ── */}
+        <div className="app-header">
+          <span className="app-kicker">Documents</span>
+          <h2 className="app-title">Medical Documents</h2>
+          <p className="app-subtitle">Upload prescriptions, lab reports, or medical scans securely to your profile.</p>
+        </div>
 
-      {/* UPLOAD CARD */}
-      <div className="card" style={{ marginBottom: "32px" }}>
-        <h3>Upload New Document</h3>
+        {/* ── Upload card ── */}
+        <section className="app-upload-card">
+          <div className="app-upload-card__header">
+            <div className="app-upload-card__icon">📤</div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Upload New Document</h3>
+              {!localStorage.getItem("sessionId") && (
+                <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "4px 0 0" }}>
+                  No active QR session — you can still upload. Generate a QR to allow doctors access.
+                </p>
+              )}
+            </div>
+          </div>
 
-        {/* session is optional — patient can still upload; QR is for granting doctor access */}
-        {!localStorage.getItem("sessionId") && (
-          <p style={{ color: "var(--text-muted)", marginBottom: 12 }}>
-            No active QR session. You can still upload documents — generate a QR to allow doctors to access them.
-          </p>
-        )}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 700, display: "block", marginBottom: 6 }}>Document Type</label>
+              <select
+                className="app-select"
+                value={docType}
+                onChange={(e) => setDocType(e.target.value as DocType)}
+              >
+                <option>Prescription</option>
+                <option>Lab Report</option>
+                <option>Scan</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 700, display: "block", marginBottom: 6 }}>Choose File</label>
+              <input
+                className="app-file-input"
+                type="file"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+            </div>
+          </div>
 
-        <label style={{ fontSize: "14px", fontWeight: 600 }}>
-          Document Type
-        </label>
-        <select
-          className="form-select"
-          value={docType}
-          onChange={(e) => setDocType(e.target.value as DocType)}
-        >
-          <option>Prescription</option>
-          <option>Lab Report</option>
-          <option>Scan</option>
-          <option>Other</option>
-        </select>
-
-        <input
-          className="file-input"
-          type="file"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-        />
-
-        {file && (
-          <p className="file-selected">Selected: <strong>{file.name}</strong></p>
-        )}
-
-        <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 16 }}>
-          <button
-            className="btn btn-primary"
-            onClick={uploadDocument}
-            disabled={loading}
-          >
-            {loading ? "Uploading…" : "Upload Document"}
-          </button>
-
-          {loading && (
-            <div className="progress-wrap">
-              <div className="progress-track">
-                <div className="progress-fill" style={{ width: `${progress}%` }} />
+          {file && (
+            <div style={{
+              marginTop: 14,
+              padding: "12px 16px",
+              borderRadius: 14,
+              background: "rgba(43,124,255,0.06)",
+              border: "1px solid rgba(43,124,255,0.12)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12
+            }}>
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>📎 {file.name}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>{(file.size / 1024).toFixed(1)} KB</p>
               </div>
-              <div className="progress-text">Uploading… {progress}%</div>
+              <button className="btn btn-secondary" onClick={() => setFile(null)} style={{ padding: "6px 12px", fontSize: 12 }}>Remove</button>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* DOCUMENT LIST */}
-      <div className="card">
-        <h3>Uploaded Files</h3>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 18 }}>
+            <button
+              className="btn btn-primary"
+              onClick={uploadDocument}
+              disabled={loading || !file}
+              style={{ padding: "12px 24px" }}
+            >
+              {loading ? "Uploading…" : "Upload Document"}
+            </button>
 
-        {documents.length === 0 ? (
-          <p style={{ color: "var(--text-muted)" }}>
-            No documents uploaded yet.
-          </p>
-        ) : (
-          <div className="scroll-list" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-            {documents.map((doc, index) => {
-              const safeUrl = /^(https?:|data:|blob:)/i.test(doc.url) ? doc.url : `https://${doc.url}`;
+            {loading && (
+              <div style={{ flex: 1, maxWidth: 260 }}>
+                <div style={{ height: 8, borderRadius: 20, background: "rgba(43,124,255,0.08)", overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%",
+                    borderRadius: 20,
+                    background: "linear-gradient(90deg, var(--primary), var(--accent))",
+                    width: `${progress}%`,
+                    transition: "width 160ms ease"
+                  }} />
+                </div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>Uploading… {progress}%</div>
+              </div>
+            )}
+          </div>
+        </section>
 
-              return (
-                <div key={doc.id || index} className="file-row">
-                  <div className="file-left">
-                    <div className="file-title">{getFileIcon(doc.url)} <strong>Document {index + 1}</strong></div>
+        {/* ── Document list ── */}
+        <section className="app-glass-card">
+          <h3 style={{ margin: "0 0 18px", fontSize: 16, fontWeight: 800 }}>Uploaded Files</h3>
 
-                    <span
-                      className="doc-badge"
-                      style={{ background: getBadgeColor(doc.type as DocType), color: "#0b1220" }}
-                    >
-                      {doc.type}
-                    </span>
+          {documents.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 28 }}>
+              <div style={{ fontSize: 48, marginBottom: 14 }}>📂</div>
+              <p style={{ color: "var(--text-muted)", fontSize: 15 }}>No documents uploaded yet.</p>
+              <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 4 }}>Use the upload form above to add your first document.</p>
+            </div>
+          ) : (
+            <div className="scroll-list" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {documents.map((doc, index) => {
+                const safeUrl = /^(https?:|data:|blob:)/i.test(doc.url) ? doc.url : `https://${doc.url}`;
 
-                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>
-                      <span>{doc.uploadedByName ? `Uploaded by ${doc.uploadedByName}` : "Uploaded"}</span>
-                      <span style={{ marginLeft: 8 }}>•</span>
-                      <span style={{ marginLeft: 8 }}>{doc.createdAt ? new Date(doc.createdAt).toLocaleString() : ""}</span>
+                return (
+                  <div key={doc.id || index} className="app-doc-item">
+                    <div className="app-doc-item__info">
+                      <div className="app-doc-item__title">
+                        {getFileIcon(doc.url)} <strong>Document {index + 1}</strong>
+                        <span className={getBadgeClass(doc.type as DocType)}>{doc.type}</span>
+                      </div>
+                      <div className="app-doc-item__meta">
+                        {doc.uploadedByName ? `Uploaded by ${doc.uploadedByName}` : "Uploaded"}
+                        {doc.createdAt && ` • ${new Date(doc.createdAt).toLocaleString()}`}
+                      </div>
+                    </div>
+
+                    <div className="app-doc-item__actions">
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => setActiveDoc({ id: doc.id, url: safeUrl, type: doc.type, uploadedByName: doc.uploadedByName, uploadedByRole: doc.uploadedByRole, createdAt: doc.createdAt })}
+                      >
+                        View
+                      </button>
+
+                      <button
+                        className="btn"
+                        style={{ color: "#dc2626", fontWeight: 700, fontSize: 13 }}
+                        onClick={async () => {
+                          if (!confirm("Delete this document?")) return;
+                          try {
+                            const token = localStorage.getItem("authToken");
+                            if (!token) {
+                              window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Sign in to delete documents", type: "error" } }));
+                              return;
+                            }
+
+                            await axios.delete(`${API}/api/documents/${doc.id}`, {
+                              headers: { Authorization: `Bearer ${token}` },
+                            });
+
+                            window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Document deleted", type: "success" } }));
+                            fetchDocuments();
+                          } catch (err: unknown) {
+                            if (axios.isAxiosError(err) && err.response?.data?.message) {
+                              window.dispatchEvent(new CustomEvent("toast", { detail: { message: err.response.data.message, type: "error" } }));
+                            } else {
+                              window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Delete failed", type: "error" } }));
+                            }
+                          }
+                        }}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
-                  <div className="file-actions">
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => setActiveDoc({ id: doc.id, url: safeUrl, type: doc.type, uploadedByName: doc.uploadedByName, uploadedByRole: doc.uploadedByRole, createdAt: doc.createdAt })}
-                    >
-                      View
-                    </button>
-
-                    <button
-                      className="btn btn-ghost"
-                      onClick={async () => {
-                        if (!confirm("Delete this document?")) return;
-                        try {
-                          // require auth token for delete
-                          const token = localStorage.getItem("authToken");
-                          if (!token) {
-                            window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Sign in to delete documents", type: "error" } }));
-                            return;
-                          }
-
-                          await axios.delete(`${API}/api/documents/${doc.id}`, {
-                            headers: { Authorization: `Bearer ${token}` },
-                          });
-
-                          window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Document deleted", type: "success" } }));
-                          fetchDocuments();
-                        } catch (err: unknown) {
-                          if (axios.isAxiosError(err) && err.response?.data?.message) {
-                            window.dispatchEvent(new CustomEvent("toast", { detail: { message: err.response.data.message, type: "error" } }));
-                          } else {
-                            window.dispatchEvent(new CustomEvent("toast", { detail: { message: "Delete failed", type: "error" } }));
-                          }
-                        }
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        {activeDoc && (
+          <DocumentModal
+            url={activeDoc.url}
+            title={`Document — ${activeDoc.type}`}
+            uploadedByName={activeDoc.uploadedByName}
+            uploadedByRole={activeDoc.uploadedByRole}
+            createdAt={activeDoc.createdAt}
+            onClose={() => setActiveDoc(null)}
+          />
         )}
       </div>
-
-      {activeDoc && (
-        <DocumentModal
-          url={activeDoc.url}
-          title={`Document — ${activeDoc.type}`}
-          uploadedByName={activeDoc.uploadedByName}
-          uploadedByRole={activeDoc.uploadedByRole}
-          createdAt={activeDoc.createdAt}
-          onClose={() => setActiveDoc(null)}
-        />
-      )}
-    </div>
+    </PatientLayout>
   );
 }
