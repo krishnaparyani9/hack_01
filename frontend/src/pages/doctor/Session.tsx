@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import DocumentModal from "../../components/DocumentModal";
@@ -18,7 +18,6 @@ export default function DoctorSession() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [activeTab, setActiveTab] = useState<"summary" | "documents">("documents");
   const [activeDoc, setActiveDoc] = useState<DocumentItem | null>(null);
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [summaries, setSummaries] = useState<{ [docId: string]: string }>({});
   const [generating, setGenerating] = useState(false);
 
@@ -70,8 +69,7 @@ export default function DoctorSession() {
     const res = await axios.get(`${API}/api/documents/${sessionId}`);
     // backend returns array of objects { id, url, type }
     setDocuments(res.data.data || []);
-    const first = (res.data.data || [])[0];
-    if (first?.id && !selectedDocId) setSelectedDocId(first.id);
+
   };
 
   const generateSummary = async () => {
@@ -104,10 +102,12 @@ export default function DoctorSession() {
 
 
 
+  // Memoized so a stable reference is passed to DocumentModal — prevents
+  // the countdown timer's setTimeLeft from causing DocumentModal to re-mount.
+  const useCloseDoc = useCallback(() => setActiveDoc(null), []);
+
   const getSafeUrl = (url: string) =>
     /^(https?:|data:|blob:)/i.test(url) ? url : `https://${url}`;
-
-  const selectedDoc = documents.find((d) => d.id === selectedDocId) || null;
 
   const inferType = (doc: DocumentItem) => {
     if (doc.type) return doc.type.toUpperCase();
@@ -200,7 +200,7 @@ export default function DoctorSession() {
         <div className="hk-split">
           <TiltCard className="card" tiltMaxDeg={5}>
             <h3>Shared documents</h3>
-            <p className="muted">Select a document to preview. Use “Open” to view in a new tab.</p>
+            <p className="muted">Click "View" on any document to open it.</p>
 
             {documents.length === 0 ? (
               <div className="card" style={{ marginTop: 14 }}>
@@ -209,27 +209,29 @@ export default function DoctorSession() {
             ) : (
               <div className="hk-doc-list" style={{ marginTop: 14 }}>
                 {documents.map((doc) => {
-                  const active = doc.id === selectedDocId;
                   return (
                     <div
                       key={doc.id}
-                      className={`hk-doc-item ${active ? "active" : ""}`}
-                      onClick={() => setSelectedDocId(doc.id)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") setSelectedDocId(doc.id);
-                      }}
+                      className="hk-doc-item"
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                        <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 900 }}>{inferType(doc)}</div>
                           <div className="muted" style={{ marginTop: 6 }}>
                             {doc.uploadedByName ? `Uploaded by ${doc.uploadedByName}` : "Uploaded"}
                             {doc.createdAt ? ` • ${new Date(doc.createdAt).toLocaleString()}` : ""}
                           </div>
                         </div>
-                        <span className="doc-badge">{doc.type}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                          <span className="doc-badge">{doc.type}</span>
+                          <button
+                            className="btn btn-secondary"
+                            style={{ padding: "5px 14px", fontSize: 13 }}
+                            onClick={() => setActiveDoc({ id: doc.id, url: getSafeUrl(doc.url), type: doc.type, uploadedByName: doc.uploadedByName, uploadedByRole: doc.uploadedByRole, createdAt: doc.createdAt })}
+                          >
+                            View
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -238,48 +240,6 @@ export default function DoctorSession() {
             )}
           </TiltCard>
 
-          <TiltCard className="card hk-preview" tiltMaxDeg={4}>
-            <h3>Preview</h3>
-            {selectedDoc ? (
-              <>
-                <div className="muted" style={{ marginBottom: 12 }}>
-                  {selectedDoc.type} • {selectedDoc.uploadedByRole ? `Uploader: ${selectedDoc.uploadedByRole}` : ""}
-                </div>
-                <div className="hk-preview-frame">
-                  {getSafeUrl(selectedDoc.url).startsWith("data:image") || /\.(png|jpg|jpeg)$/i.test(getSafeUrl(selectedDoc.url)) ? (
-                    <img src={getSafeUrl(selectedDoc.url)} alt="Document preview" />
-                  ) : (
-                    <iframe title="Document preview" src={getSafeUrl(selectedDoc.url)} />
-                  )}
-                </div>
-
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() =>
-                      setActiveDoc({
-                        id: selectedDoc.id,
-                        url: getSafeUrl(selectedDoc.url),
-                        type: selectedDoc.type,
-                        uploadedByName: selectedDoc.uploadedByName,
-                        uploadedByRole: selectedDoc.uploadedByRole,
-                        createdAt: selectedDoc.createdAt,
-                      })
-                    }
-                  >
-                    Fullscreen
-                  </button>
-                  <a className="btn btn-primary" href={getSafeUrl(selectedDoc.url)} target="_blank" rel="noreferrer">
-                    Open
-                  </a>
-                </div>
-              </>
-            ) : (
-              <div className="card" style={{ marginTop: 14 }}>
-                <p className="muted">Select a document to preview.</p>
-              </div>
-            )}
-          </TiltCard>
         </div>
       )}
 
@@ -316,7 +276,7 @@ export default function DoctorSession() {
           uploadedByName={activeDoc.uploadedByName}
           uploadedByRole={activeDoc.uploadedByRole}
           createdAt={activeDoc.createdAt}
-          onClose={() => setActiveDoc(null)}
+          onClose={useCloseDoc}
         />
       )}
     </div>

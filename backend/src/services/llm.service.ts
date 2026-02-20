@@ -30,22 +30,22 @@ export class LLMService {
     console.log('LLM: Generating summary for text length:', text.length);
 
     const prompt = `
-You are a medical summarization assistant. Your task is to create a concise, doctor-friendly summary of the provided medical document text.
+You are a medical summarization assistant. Carefully read the entire document text below and extract every clinically relevant detail.
 
-IMPORTANT RULES:
-- ONLY include information explicitly mentioned in the text.
-- DO NOT add new diagnoses, predictions, or medical advice.
-- DO NOT suggest treatments or recommendations.
-- Extract only: diagnoses mentioned, abnormal lab values, current medications, critical alerts.
-- Merge duplicate measurements into one bullet noting the date range (e.g., "SaO2 92% on 06/04 - 07/05/2004").
-- Limit each section to at most three concise bullets; omit a section if no data.
-- Output sections in the order: Diagnoses, Abnormal Labs, Medications, Critical Alerts.
-- If no relevant information is found, state "No significant findings in the provided text."
+RULES:
+- Extract ALL of the following if present: diagnoses, lab values (including normal ones with their reference ranges), vital signs, medications with doses, test results, procedures, dates, physician notes, allergies, and any abnormal findings.
+- Quote numeric values exactly as they appear (e.g. "Hemoglobin: 11.2 g/dL (ref 12-16)").
+- Do NOT skip values just because they are within normal range — include them.
+- Merge repeated measurements into one bullet with the date range.
+- Organize output into sections: **Diagnoses / Impressions**, **Lab Results**, **Vital Signs**, **Medications**, **Procedures / Tests**, **Other Findings**. Omit sections with no data.
+- Use concise bullet points. Do NOT add medical advice or new diagnoses.
+- Only say "No extractable information found" if the document text is truly blank or unintelligible.
+- IMPORTANT: If the document contains a report date, collection date, test date, or sample date, output it on the VERY FIRST LINE in exactly this format: "Report Date: YYYY-MM-DD". If no date is found, omit that line entirely.
 
-Medical Document Text:
+Document Text:
 ${text}
 
-Summary:
+Structured Summary:
 `;
 
     return this.requestSummary(prompt, 'document summary', 'Failed to generate medical summary');
@@ -71,15 +71,16 @@ ${entry.summary}`;
       .join('\n\n');
 
     const prompt = `
-You are a medical summarization assistant. You will receive AI-generated summaries from multiple medical documents belonging to the same patient. Combine them into a single, cohesive report.
+You are a medical summarization assistant. Combine the following AI-generated summaries from multiple documents belonging to the same patient into a single, cohesive report.
 
-IMPORTANT RULES:
-- Synthesize overlapping findings and highlight trends across documents.
+RULES:
+- Include ALL findings from every document — do NOT drop values just because they appear normal.
+- Highlight trends (e.g. "Hemoglobin dropped from 13 g/dL (Jan) to 11.2 g/dL (Mar)").
 - ONLY use information present in the provided summaries.
 - DO NOT invent new diagnoses, treatments, or prognoses.
-- Organize output into: Overall Status, Key Diagnoses, Abnormal Labs, Medications, Critical Alerts.
-- Limit each section to at most three concise bullets; omit sections without data.
-- If no meaningful findings exist, respond with "No significant findings across the provided records.".
+- Organize into: **Overall Status**, **Key Diagnoses**, **Lab Trends**, **Medications**, **Procedures / Tests**, **Critical Alerts**. Omit sections with no data.
+- Use concise bullet points per section.
+- Only say "No information available" if all summaries are blank.
 
 Patient Document Summaries:
 ${compiled}
@@ -100,7 +101,8 @@ Unified Summary:
             content: prompt
           }
         ],
-        temperature: 0.2
+        temperature: 0.3,
+        max_tokens: 1024,
       });
 
       const rawContent = response.choices[0]?.message?.content;

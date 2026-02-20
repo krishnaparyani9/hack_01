@@ -1,6 +1,7 @@
 import { createWorker } from 'tesseract.js';
 import pdfParse from 'pdf-parse';
 import axios from 'axios';
+import { v2 as cloudinary } from 'cloudinary';
 
 /**
  * OCR Service for extracting text from medical documents.
@@ -34,23 +35,25 @@ export class OCRService {
         }
       } else {
         // Regular URL detection
-        isImage = /\.(jpg|jpeg|png)$/i.test(url) || (url.includes('cloudinary') && url.includes('image'));
-        isPdf = /\.(pdf)$/i.test(url) || (url.includes('cloudinary') && url.includes('pdf'));
+        const lower = url.toLowerCase();
+        const hasPdfExt = lower.includes('.pdf');
+        isPdf = hasPdfExt || (lower.includes('cloudinary') && lower.includes('/pdf/'));
+        isImage = !hasPdfExt && (/(\.(jpg|jpeg|png))$/i.test(url) || (url.includes('cloudinary') && url.includes('/image/upload/')));
       }
 
       console.log(`OCR: isImage=${isImage}, isPdf=${isPdf}`);
 
-      if (isImage) {
-        return await this.extractTextFromImage(url);
-      } else if (isPdf) {
+      if (isPdf) {
         return await this.extractTextFromPdf(url);
+      } else if (isImage) {
+        return await this.extractTextFromImage(url);
       } else {
         console.log(`OCR: Unsupported URL type: ${url.substring(0, 50)}...`);
         throw new Error('Unsupported document type. Only JPG, PNG, and PDF are supported.');
       }
     } catch (error) {
       console.error('Error extracting text:', error);
-      throw new Error('Failed to extract text from document.');
+      return '';
     }
   }
 
@@ -91,8 +94,32 @@ export class OCRService {
         const base64Data = url.split(',')[1];
         buffer = Buffer.from(base64Data, 'base64');
       } else {
-        // Fetch PDF buffer from URL
-        const response = await axios.get(url, { responseType: 'arraybuffer' });
+        // Build best fetch URL — use Cloudinary private_download_url when possible
+        let fetchUrl = url;
+        const m = url.match(
+          /res\.cloudinary\.com\/([^/]+)\/([^/]+)\/([^/]+)\/v(\d+)\/(.+?)\.(\w+)(?:[?#].*)?$/i
+        );
+        if (m) {
+          const [, cloud, resType, , , publicId, format] = m;
+          const resourceTypes = resType === 'raw' ? ['raw', 'image'] : ['image', 'raw'];
+          for (const rt of resourceTypes) {
+            try {
+              const dlUrl = (cloudinary.utils as any).private_download_url(publicId, format, {
+                cloud_name: cloud,
+                resource_type: rt,
+                type: 'upload',
+                api_key: cloudinary.config().api_key,
+                api_secret: cloudinary.config().api_secret,
+              });
+              if (dlUrl) { fetchUrl = dlUrl; break; }
+            } catch { /* try next */ }
+          }
+        }
+        console.log(`OCR: Fetching PDF from ${fetchUrl.substring(0, 80)}...`);
+        const response = await axios.get(fetchUrl, { responseType: 'arraybuffer', timeout: 20000 });
+        if (response.status !== 200) {
+          throw new Error(`HTTP ${response.status} fetching PDF`);
+        }
         buffer = Buffer.from(response.data);
       }
 
@@ -100,20 +127,17 @@ export class OCRService {
       const data = await pdfParse(buffer);
       const text = data.text.trim();
 
-      // If little to no text (likely scanned PDF), fallback to OCR
-      if (text.length < 100) {
-        console.warn('PDF appears scanned; falling back to OCR.');
-        // For simplicity, assume first page as image; in production, convert PDF pages to images
-        throw new Error('Scanned PDF detected; OCR fallback needed.');
+      // If little to no text (likely scanned PDF), return empty string
+      if (text.length < 30) {
+        console.warn('PDF appears scanned or empty; no extractable text found.');
+        return '';
       }
 
       return text;
     } catch (error) {
       // Fallback to OCR if pdf-parse fails or detects scanned PDF
-      console.warn('PDF text extraction failed; attempting OCR fallback.');
-      // Note: For scanned PDFs, you'd need to convert pages to images first (e.g., using pdf2pic)
-      // For now, throw error; in production, implement page-to-image conversion
-      throw new Error('Scanned PDF OCR not fully implemented. Use text-based PDFs.');
+      console.warn('PDF text extraction failed; returning empty text.');
+      return '';
     }
   }
 
@@ -124,27 +148,22 @@ export class OCRService {
    * @returns string - Cleaned text.
    */
   static cleanText(text: string): string {
-    // Basic cleaning: remove extra whitespace, normalize line breaks
-    let cleaned = text.replace(/\s+/g, ' ').trim();
+    if (!text) return '';
 
-    // Remove common headers/footers (customize based on typical medical docs)
-    cleaned = cleaned.replace(/^(Patient Name|Date|Report|Page \d+|Confidential).*$/gim, '');
+    // Normalize line endings
+    let cleaned = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-    // Remove duplicate lab ranges (e.g., "Normal: 0-100" repeated)
-    const lines = cleaned.split('\n');
-    const uniqueLines: string[] = [];
-    const seen = new Set<string>();
-    for (const line of lines) {
-      const normalized = line.trim().toLowerCase();
-      if (!seen.has(normalized) && normalized.length > 0) {
-        seen.add(normalized);
-        uniqueLines.push(line.trim());
-      }
-    }
-    cleaned = uniqueLines.join('\n');
+    // Collapse runs of blank lines to a single blank line
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
 
-    // Remove noise: non-alphanumeric except common medical symbols
-    cleaned = cleaned.replace(/[^a-zA-Z0-9\s.,\-\/:()]/g, '');
+    // Remove obvious page headers/footers
+    cleaned = cleaned.replace(/^(Page \d+( of \d+)?|Confidential|CONFIDENTIAL)\s*$/gim, '');
+
+    // Collapse multiple spaces on a single line (but preserve newlines)
+    cleaned = cleaned.split('\n').map(l => l.replace(/ {2,}/g, ' ').trim()).join('\n');
+
+    // Remove truly empty lines after trimming
+    cleaned = cleaned.split('\n').filter(l => l.length > 0).join('\n');
 
     return cleaned.trim();
   }

@@ -220,6 +220,8 @@ export default function Documents() {
             <div>
               <label style={{ fontSize: 13, fontWeight: 700, display: "block", marginBottom: 6 }}>Document Type</label>
               <select
+                id="doc-type"
+                name="doc-type"
                 className="app-select"
                 value={docType}
                 onChange={(e) => setDocType(e.target.value as DocType)}
@@ -233,6 +235,8 @@ export default function Documents() {
             <div>
               <label style={{ fontSize: 13, fontWeight: 700, display: "block", marginBottom: 6 }}>Choose File</label>
               <input
+                id="doc-file"
+                name="doc-file"
                 className="app-file-input"
                 type="file"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}

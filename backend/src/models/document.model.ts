@@ -35,6 +35,31 @@ const documentSchema = new mongoose.Schema(
     summary: {
       type: String,
     },
+
+    // Date found inside the report itself (extracted from OCR text)
+    reportDate: {
+      type: Date,
+    },
+
+    // Extracted lab metrics (optional, populated after summarization)
+    labResults: {
+      hemoglobin: {
+        value: Number,
+        unit: String,
+      },
+      wbc: {
+        value: Number,
+        unit: String,
+      },
+      platelets: {
+        value: Number,
+        unit: String,
+      },
+      glucose: {
+        value: Number,
+        unit: String,
+      },
+    },
   },
   { timestamps: true }
 );

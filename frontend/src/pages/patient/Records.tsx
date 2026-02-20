@@ -350,13 +350,13 @@ export default function Records() {
               <p style={{ color: "var(--text-muted)" }}>{shareDocs.map((d) => d.type).join(", ")}</p>
 
               <label style={{ fontWeight: 700, fontSize: 13, display: "block", marginTop: 16 }}>Access Type</label>
-              <select className="app-select" value={shareAccessType} onChange={(e) => setShareAccessType(e.target.value as "view" | "write")} style={{ margin: "8px 0 16px" }}>
+              <select id="share-access-type" name="share-access-type" className="app-select" value={shareAccessType} onChange={(e) => setShareAccessType(e.target.value as "view" | "write")} style={{ margin: "8px 0 16px" }}>
                 <option value="view">View Only</option>
                 <option value="write">View + Write</option>
               </select>
 
               <label style={{ fontWeight: 700, fontSize: 13, display: "block" }}>Duration (minutes)</label>
-              <input className="app-select" type="number" min={1} value={shareDuration} onChange={(e) => setShareDuration(Number(e.target.value))} style={{ margin: "8px 0 16px" }} />
+              <input id="share-duration" name="share-duration" className="app-select" type="number" min={1} value={shareDuration} onChange={(e) => setShareDuration(Number(e.target.value))} style={{ margin: "8px 0 16px" }} />
 
               <div style={{ display: "flex", gap: 8 }}>
                 <button className="btn btn-primary" onClick={generateShare} disabled={generatingShare}>

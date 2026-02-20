@@ -261,7 +261,7 @@ export default function GenerateQR() {
                   return (
                     <div key={d.id || idx} className={`records-row ${checked ? "records-row--selected" : ""}`} style={{ alignItems: "flex-start" }}>
                       <div className="records-row__left">
-                        <input type="checkbox" checked={checked} onChange={() => toggleSelect(d.id)} />
+                        <input type="checkbox" id={`qr-doc-${d.id || idx}`} name={`qr-doc-${d.id || idx}`} checked={checked} onChange={() => toggleSelect(d.id)} />
                         <div>
                           <div style={{ fontWeight: 800 }}>{d.type || "Document"}</div>
                           <div className="records-meta">{label}</div>
@@ -293,6 +293,8 @@ export default function GenerateQR() {
             <div>
               <label><strong>Access Type</strong></label>
               <select
+                id="qr-access-type"
+                name="qr-access-type"
                 value={accessType}
                 onChange={(e) => setAccessType(e.target.value as "view" | "write")}
                 style={{ width: "100%", marginTop: 8, padding: 12, borderRadius: 12, border: "1px solid var(--border)", background: "var(--surface-2)" }}
@@ -310,6 +312,8 @@ export default function GenerateQR() {
             <div>
               <label><strong>Duration (minutes)</strong></label>
               <input
+                id="qr-duration"
+                name="qr-duration"
                 type="number"
                 min={1}
                 value={duration}

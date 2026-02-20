@@ -91,37 +91,37 @@ const PatientEditor: React.FC<Props> = ({ patientId, onClose }) => {
     <form className="editor-form" onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <label className="field">
         <div>Name</div>
-        <input className="form-input" value={name} onChange={(e) => setName(e.target.value)} />
+        <input name="patient-name" id="patient-name" className="form-input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
       </label>
 
       <label className="field">
         <div>Email</div>
-        <input className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input name="patient-email" id="patient-email" className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
       </label>
 
       <label className="field">
         <div>Blood group</div>
-        <input className="form-input" value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} />
+        <input name="patient-blood-group" id="patient-blood-group" className="form-input" value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} />
       </label>
 
       <label className="field">
         <div>Allergies (comma separated)</div>
-        <input className="form-input" value={allergies} onChange={(e) => setAllergies(e.target.value)} />
+        <input name="patient-allergies" id="patient-allergies" className="form-input" value={allergies} onChange={(e) => setAllergies(e.target.value)} />
       </label>
 
       <label className="field">
         <div>Medications (comma separated)</div>
-        <input className="form-input" value={medications} onChange={(e) => setMedications(e.target.value)} />
+        <input name="patient-medications" id="patient-medications" className="form-input" value={medications} onChange={(e) => setMedications(e.target.value)} />
       </label>
 
       <label className="field">
         <div>Chronic conditions (comma separated)</div>
-        <input className="form-input" value={chronicConditions} onChange={(e) => setChronicConditions(e.target.value)} />
+        <input name="patient-chronic" id="patient-chronic" className="form-input" value={chronicConditions} onChange={(e) => setChronicConditions(e.target.value)} />
       </label>
 
       <label className="field">
         <div>Emergency contact</div>
-        <input className="form-input" value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)} />
+        <input name="patient-emergency" id="patient-emergency" className="form-input" value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)} />
       </label>
 
       <div className="form-actions">

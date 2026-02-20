@@ -15,6 +15,7 @@ import GenerateQR from "./pages/patient/GenerateQR";
 import Emergency from "./pages/patient/Emergency";
 import Records from "./pages/patient/Records";
 import PatientDocuments from "./pages/patient/Documents";
+import PatientAnalytics from "./pages/patient/Analytics";
 
 // DOCTOR
 import DoctorDashboard from "./pages/doctor/Dashboard";
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/patient/generate-qr" element={<GenerateQR />} />
         <Route path="/patient/emergency" element={<Emergency />} />
         <Route path="/patient/documents" element={<PatientDocuments />} />
+        <Route path="/patient/analytics" element={<PatientAnalytics />} />
 
 
 

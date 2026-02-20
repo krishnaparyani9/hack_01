@@ -130,6 +130,11 @@ const PatientLayout = ({ children }: { children: React.ReactNode }) => {
             <span className="sb-hide-collapsed">Documents</span>
           </Link>
 
+          <Link className={`sb-nav__item ${isActive("/patient/analytics")}`} to="/patient/analytics" data-tooltip="Analytics">
+            <span className="sb-nav__icon">📈</span>
+            <span className="sb-hide-collapsed">Analytics</span>
+          </Link>
+
           <Link className={`sb-nav__item ${isActive("/patient/emergency")}`} to="/patient/emergency" data-tooltip="Emergency">
             <span className="sb-nav__icon">🚨</span>
             <span className="sb-hide-collapsed">Emergency</span>

@@ -128,7 +128,7 @@ export default function UploadDocument() {
                 <span className="upload-label">Document Type</span>
                 <p className="upload-hint">Select a category so the patient can filter easily later.</p>
               </header>
-              <select value={docType} onChange={(e) => setDocType(e.target.value as DocType)} className="upload-select">
+              <select id="upload-doc-type" name="upload-doc-type" value={docType} onChange={(e) => setDocType(e.target.value as DocType)} className="upload-select">
                 <option>Prescription</option>
                 <option>Lab Report</option>
                 <option>Scan</option>
@@ -144,6 +144,8 @@ export default function UploadDocument() {
             >
               <input
                 ref={fileInputRef}
+                id="upload-file"
+                name="upload-file"
                 type="file"
                 className="upload-input"
                 onChange={(e) => onFilesSelected(e.target.files)}

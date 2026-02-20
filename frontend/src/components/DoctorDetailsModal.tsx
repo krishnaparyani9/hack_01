@@ -65,16 +65,16 @@ export default function DoctorDetailsModal({ onClose }: Props) {
         ) : (
           <div style={{ marginTop: 12 }}>
             <label style={{ fontSize: 13, fontWeight: 700 }}>Name</label>
-            <input className="form-input" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", marginTop: 8 }} />
+            <input id="doctor-name" name="doctor-name" className="form-input" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", marginTop: 8 }} autoComplete="name" />
 
             <label style={{ fontSize: 13, fontWeight: 700, marginTop: 12 }}>Email</label>
-            <input className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: "100%", marginTop: 8 }} />
+            <input id="doctor-email" name="doctor-email" className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: "100%", marginTop: 8 }} autoComplete="email" />
 
             <label style={{ fontSize: 13, fontWeight: 700, marginTop: 12 }}>ID</label>
-            <input className="form-input" value={id} onChange={(e) => setId(e.target.value)} style={{ width: "100%", marginTop: 8 }} />
+            <input id="doctor-id" name="doctor-id" className="form-input" value={id} onChange={(e) => setId(e.target.value)} style={{ width: "100%", marginTop: 8 }} />
 
             <label style={{ fontSize: 13, fontWeight: 700, marginTop: 12 }}>Phone</label>
-            <input className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} style={{ width: "100%", marginTop: 8 }} />
+            <input id="doctor-phone" name="doctor-phone" className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} style={{ width: "100%", marginTop: 8 }} autoComplete="tel" />
 
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
               <button className="btn btn-secondary" onClick={() => setEditing(false)}>Cancel</button>

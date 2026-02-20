@@ -8,6 +8,7 @@ import {
   uploadDocumentByPatientJsonController, // <-- new
   summarizeDocumentController,
   summarizePatientDocumentsController,
+  proxyDocumentController,
 } from "../controllers/document.controller";
 import { upload } from "../middleware/upload";
 import { authMiddleware, requireAuth } from "../middleware/auth.middleware";
@@ -41,6 +42,9 @@ router.post(
   requireAuth,
   summarizePatientDocumentsController
 );
+
+// Proxy document fetch (for PDF preview)
+router.get("/proxy", proxyDocumentController);
 
 /**
  * Upload document via QR session (doctor) - requires auth

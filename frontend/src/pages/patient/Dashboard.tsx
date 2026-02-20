@@ -44,13 +44,14 @@ const Dashboard = () => {
         icon: "🔐",
         color: "teal" as const,
       },
+      
       {
-        title: "Emergency",
-        description: "Highlight critical health info",
-        to: "/patient/emergency",
-        action: "Open",
-        icon: "🚨",
-        color: "red" as const,
+        title: "Analytics",
+        description: "Trends from reports and labs",
+        to: "/patient/analytics",
+        action: "View Trends",
+        icon: "📈",
+        color: "teal" as const,
       },
     ],
     []
